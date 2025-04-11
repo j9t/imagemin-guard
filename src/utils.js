@@ -66,6 +66,8 @@ const compression = async (filename, dry) => {
         .toFile(tempFilePath)
     } else if (outputFormat === 'avif') {
       await sharp(filename)
+        // @@ Temporarily switch to using `quality` until `lossless` can be used again, depending on result of https://github.com/lovell/sharp/issues/4370
+        // .avif({ quality: 100 })
         .avif({ lossless: true })
         .toFile(tempFilePath)
     } else {
