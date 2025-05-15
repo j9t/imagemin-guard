@@ -49,8 +49,8 @@ const compression = async (filename, dry) => {
 
     // @@ Refactor for better maintainability and configurability
     if (outputFormat === 'png') {
-      await sharp(filename)
-        .png({ compressionLevel: 9, quality: 100 })
+      await sharp(filename, { pages: -1 })
+        .png({ animated: true, compressionLevel: 9, quality: 100 })
         .toFile(tempFilePath)
     } else if (outputFormat === 'gif') {
       const execFileAsync = util.promisify(execFile)
@@ -61,8 +61,8 @@ const compression = async (filename, dry) => {
         return 0
       }
     } else if (outputFormat === 'webp') {
-      await sharp(filename)
-        .webp({ lossless: true })
+      await sharp(filename, { pages: -1 })
+        .webp({ animated: true, lossless: true })
         .toFile(tempFilePath)
     } else if (outputFormat === 'avif') {
       await sharp(filename)
