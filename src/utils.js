@@ -50,7 +50,7 @@ const compression = async (filename, dry) => {
     // @@ Refactor for better maintainability and configurability
     if (outputFormat === 'png') {
       await sharp(filename, { pages: -1 })
-        .png({ animated: true, compressionLevel: 9, quality: 100 })
+        .png({ animated: true, compressionLevel: 9, quality: 100 }) // Still waiting for APNG support though (`animated` doesn’t seem to have an effect), https://github.com/lovell/sharp/issues/2375
         .toFile(tempFilePath)
     } else if (outputFormat === 'gif') {
       const execFileAsync = util.promisify(execFile)
