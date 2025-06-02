@@ -8,7 +8,7 @@
     "filesize": "^10.1.6",
     "gifsicle": "^7.0.1",
     "globby": "^14.1.0",
-    "sharp": "^0.34.1",
+    "sharp": "^0.34.2",
     "simple-git": "^3.27.0"
   },
   "description": "Ensure losslessly compressed PNG, JPG, GIF, WebP, and AVIF images (suitable for manual and automatic compression)",
