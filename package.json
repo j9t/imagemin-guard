@@ -13,7 +13,7 @@
   },
   "description": "Ensure losslessly compressed PNG, JPG, GIF, WebP, and AVIF images (suitable for manual and automatic compression)",
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.0.0"
   },
   "homepage": "https://github.com/j9t/imagemin-guard",
   "keywords": [
