@@ -80,7 +80,7 @@ const compression = async (filename, dry) => {
         .toFormat(outputFormat, config.settings)
         .toFile(tempFilePath)
     } else {
-      // Fallback for any other supported formats
+      // Fallback for any other supported formats (like JPG)
       await sharp(filename)
         .toFormat(outputFormat, { quality: 100 })
         .toFile(tempFilePath)
@@ -108,7 +108,7 @@ const compression = async (filename, dry) => {
     logMessage(`${status} ${filename} (${details})`, dry, color)
 
     if (dry) {
-      fs.unlinkSync(tempFilePath)
+      await fs.promises.unlink(tempFilePath)
       return 0
     }
 
