@@ -1,13 +1,18 @@
-const fs = require('fs')
-const path = require('path')
-const { execSync } = require('child_process')
-const simpleGit = require('simple-git')
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { execSync } from 'child_process'
+import { fileURLToPath } from 'url'
+import { test, describe, before, after } from 'node:test'
+import assert from 'node:assert'
+import simpleGit from 'simple-git'
+import { fileTypes as allowedFileTypes } from '../src/index.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const testFolder = path.join(__dirname, '../media/test')
 const testFolderGit = path.join(__dirname, '../media/test-git')
 const imageminGuardScript = path.join(__dirname, '../bin/imagemin-guard.js')
-// Crutch to avoid files like .DS_Store to sneak in
-// @@ Consolidate with package, to keep image definitions DRY (once there’s better Jest ESM support?)
-const allowedFileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp']
 
 // Function to copy files
 function copyFiles(srcDir, destDir) {
@@ -24,17 +29,17 @@ function copyFiles(srcDir, destDir) {
 // Function to check if images are compressed
 const ignoreFiles = ['test#corrupt.gif']
 
-function areImagesCompressed(dir) {
+function areImagesCompressed(dir, originalDir = testFolder) {
   const uncompressedFiles = []
   const allCompressed = fs.readdirSync(dir).every(file => {
     if (ignoreFiles.includes(file)) {
       // console.info(`Ignoring file: ${file}`)
       return true
     }
-    const ext = path.extname(file).slice(1)
+    const ext = path.extname(file).slice(1).toLowerCase()
     if (!allowedFileTypes.includes(ext)) return true
     const filePath = path.join(dir, file)
-    const originalFilePath = path.join(testFolder, file)
+    const originalFilePath = path.join(originalDir, file)
     try {
       const originalStats = fs.statSync(originalFilePath)
       const compressedStats = fs.statSync(filePath)
@@ -54,7 +59,7 @@ function areImagesCompressed(dir) {
 // Function to check if images are already compressed
 function areImagesAlreadyCompressed(dir) {
   return fs.readdirSync(dir).some(file => {
-    const ext = path.extname(file).slice(1)
+    const ext = path.extname(file).slice(1).toLowerCase()
     if (!allowedFileTypes.includes(ext)) return false
     const filePath = path.join(dir, file)
     const originalFilePath = path.join(testFolder, file)
@@ -65,12 +70,12 @@ function areImagesAlreadyCompressed(dir) {
 }
 
 describe('Imagemin Guard', () => {
-  beforeAll(() => {
+  before(() => {
     // Back up original images
     copyFiles(testFolder, testFolderGit)
   })
 
-  afterAll(() => {
+  after(() => {
     // Clean up temporary directory
     if (fs.existsSync(testFolderGit)) {
       fs.rmSync(testFolderGit, { recursive: true, force: true })
@@ -79,17 +84,34 @@ describe('Imagemin Guard', () => {
 
   test('Compress images', () => {
     // Ensure images in temp folder are not already compressed
-    expect(areImagesAlreadyCompressed(testFolderGit)).toBe(true)
+    assert.strictEqual(areImagesAlreadyCompressed(testFolderGit), true)
 
-    // Run imagemin-guard script
-    execSync(`node ${imageminGuardScript} --ignore=media/test`)
+    // Run the script in a completely isolated temporary directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-test-'))
+    const tempTestFolder = path.join(tempDir, 'test')
 
-    // Verify images are compressed
-    const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
+    // Copy test files to isolated temp directory
+    copyFiles(testFolder, tempTestFolder)
+
+    // Run imagemin-guard from temp directory—only files in “tempDir” will be processed
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node '${imageminGuardScript}'`)
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Check results from the isolated temp files
+    const { allCompressed, uncompressedFiles } = areImagesCompressed(tempTestFolder, testFolder)
+
+    // Clean up
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
     if (uncompressedFiles.length > 0) {
       console.log('The following files were not compressed:', uncompressedFiles.join(', '))
     }
-    expect(allCompressed).toBe(true)
+    assert.strictEqual(allCompressed, true)
   })
 
   test('Compress only staged images', async () => {
@@ -108,15 +130,15 @@ describe('Imagemin Guard', () => {
     // Stage files
     await git.add('.')
 
-    // Run imagemin-guard script with --staged option
-    execSync(`node ${imageminGuardScript} --staged`, { cwd: testFolderGit })
+    // Run imagemin-guard script with “--staged” option
+    execSync(`node '${imageminGuardScript}' --staged`, { cwd: testFolderGit })
 
     // Verify images are compressed
     const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
     if (uncompressedFiles.length > 0) {
       console.log('The following files were not compressed:', uncompressedFiles.join(', '))
     }
-    expect(allCompressed).toBe(true)
+    assert.strictEqual(allCompressed, true)
   })
 
   test('Do not modify files in dry run', () => {
@@ -124,16 +146,16 @@ describe('Imagemin Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node ${imageminGuardScript} --dry`)
+    execSync(`node '${imageminGuardScript}' --dry`)
     const newStats = fs.readdirSync(testFolderGit).map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
     originalStats.forEach((original, index) => {
       const newFile = newStats[index]
-      expect(newFile.file).toStrictEqual(original.file)
-      expect(newFile.stats.size).toStrictEqual(original.stats.size)
-      expect(newFile.stats.mtime).toStrictEqual(original.stats.mtime)
+      assert.strictEqual(newFile.file, original.file)
+      assert.strictEqual(newFile.stats.size, original.stats.size)
+      assert.strictEqual(newFile.stats.mtime.getTime(), original.stats.mtime.getTime())
     })
   })
 })

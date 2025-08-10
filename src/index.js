@@ -3,9 +3,13 @@
 import { globbySync } from 'globby'
 import simpleGit from 'simple-git'
 import { parseArgs, styleText } from 'node:util'
+import path from 'node:path'
 import { utils } from './utils.js'
 
-(async () => {
+// Files to be compressed
+export const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp'];
+
+export async function runImageminGuard() {
   const options = {
     dry: { type: 'boolean', default: false },
     ignore: { type: 'string', multiple: false, default: '' },
@@ -22,8 +26,6 @@ import { utils } from './utils.js'
     }
   }
 
-  // Files to be compressed
-  const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp']
   console.log(`(Search pattern: ${fileTypes.join(', ')})\n`)
 
   let savedKB = 0
@@ -76,4 +78,4 @@ import { utils } from './utils.js'
   } else {
     await compress(compressionFiles, argv.dry)
   }
-})()
+}
