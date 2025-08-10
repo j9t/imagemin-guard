@@ -93,8 +93,14 @@ describe('Imagemin Guard', () => {
     // Copy test files to isolated temp directory
     copyFiles(testFolder, tempTestFolder)
 
-    // Run imagemin-guard with explicit directory - only files in tempDir will be processed
-    execSync(`node "${imageminGuardScript}" --directory="${tempDir}"`, { cwd: tempDir })
+    // Run imagemin-guard from temp directory—only files in “tempDir” will be processed
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageminGuardScript}"`)
+    } finally {
+      process.chdir(originalCwd)
+    }
 
     // Check results from the isolated temp files
     const { allCompressed, uncompressedFiles } = areImagesCompressed(tempTestFolder, testFolder)

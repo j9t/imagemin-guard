@@ -13,8 +13,7 @@ export async function runImageminGuard() {
   const options = {
     dry: { type: 'boolean', default: false },
     ignore: { type: 'string', multiple: false, default: '' },
-    staged: { type: 'boolean', default: false },
-    directory: { type: 'string', multiple: false, default: process.cwd() }
+    staged: { type: 'boolean', default: false }
   }
   const { values: argv } = parseArgs({ options })
 
@@ -59,15 +58,11 @@ export async function runImageminGuard() {
   }
 
   const findFiles = (patterns, options = {}) => {
-    return globbySync(patterns, { gitignore: true, cwd: argv.directory, ...options })
+    return globbySync(patterns, { gitignore: true, ...options })
   }
 
   const patterns = getFilePattern(argv.ignore)
   let files = findFiles(patterns)
-  // Convert relative paths to absolute paths when using custom directory
-  if (argv.directory !== process.cwd()) {
-    files = files.map(file => path.resolve(argv.directory, file))
-  }
   let compressionFiles = files
 
   // Search for staged files
