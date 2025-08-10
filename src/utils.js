@@ -46,32 +46,41 @@ const compression = async (filename, dry) => {
 
     const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses “jpeg” instead of “jpg”
 
-    // @@ Refactor for better maintainability and configurability
-    if (outputFormat === 'png') {
-      await sharp(filename, { pages: -1 })
-        .png({ animated: true, compressionLevel: 9, quality: 100 }) // Still waiting for APNG support though (`animated` doesn’t seem to have an effect), https://github.com/lovell/sharp/issues/2375
-        .toFile(tempFilePath)
-    } else if (outputFormat === 'gif') {
-      await sharp(filename, { pages: -1 })
-        .gif({
+    // Compression configuration for each format
+    const formatConfigs = {
+      png: {
+        options: { pages: -1 },
+        settings: { animated: true, compressionLevel: 9, quality: 100 } // Still waiting for APNG support though (`animated` doesn't seem to have an effect), https://github.com/lovell/sharp/issues/2375
+      },
+      gif: {
+        options: { pages: -1 },
+        settings: {
           reuse: true,               // Preserve original palette for lossless quality (default)
           effort: 10,                // Maximum compression effort
           dither: 0,                 // No dithering = lossless quality
           interFrameMaxError: 0,     // No transparency errors = lossless (default)
           interPaletteMaxError: 0,   // Perfect palette match = lossless
           colors: 256                // Full palette available (default)
-        })
-        .toFile(tempFilePath)
-    } else if (outputFormat === 'webp') {
-      await sharp(filename, { pages: -1 })
-        .webp({ animated: true, lossless: true })
-        .toFile(tempFilePath)
-    } else if (outputFormat === 'avif') {
-      await sharp(filename)
-        // Temporarily specifying effort, too, as per https://github.com/lovell/sharp/issues/4370#issuecomment-2798848572
-        .avif({ effort: 5, lossless: true })
+        }
+      },
+      webp: {
+        options: { pages: -1 },
+        settings: { animated: true, lossless: true }
+      },
+      avif: {
+        options: {},
+        settings: { effort: 5, lossless: true } // Temporarily specifying effort, too, as per https://github.com/lovell/sharp/issues/4370#issuecomment-2798848572
+      }
+    }
+
+    // Apply format-specific compression or use default
+    const config = formatConfigs[outputFormat]
+    if (config) {
+      await sharp(filename, config.options)
+        .toFormat(outputFormat, config.settings)
         .toFile(tempFilePath)
     } else {
+      // Fallback for any other supported formats
       await sharp(filename)
         .toFormat(outputFormat, { quality: 100 })
         .toFile(tempFilePath)
@@ -115,7 +124,7 @@ const compression = async (filename, dry) => {
 
     // Check if this is a file corruption error
     if (error.message && (
-      error.message.includes('corrupt header') || 
+      error.message.includes('corrupt header') ||
       error.message.includes('Unexpected end of') ||
       error.message.includes('Invalid') ||
       error.message.includes('gifload:') ||
@@ -126,7 +135,7 @@ const compression = async (filename, dry) => {
     } else {
       console.error(styleText('red', `Error compressing ${filename}:`), error)
     }
-    
+
     if (!dry) {
       await fs.promises.rename(filenameBackup, filename)
     }
