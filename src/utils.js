@@ -1,13 +1,10 @@
 // This file, which had been forked from imagemin-merlin, was modified for imagemin-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
 
-import { execFile } from 'child_process'
 import fs from 'fs'
-import gifsicle from 'gifsicle'
 import os from 'os'
 import path from 'path'
 import sharp from 'sharp'
 import { styleText } from 'node:util'
-import util from 'util'
 
 const logMessage = (message, dry, color = 'yellow') => {
   const prefix = dry ? 'Dry run: ' : ''
@@ -37,7 +34,7 @@ const compression = async (filename, dry) => {
     return 0
   }
 
-  const tempFilePath = path.join(os.tmpdir(), path.basename(filename))
+  const tempFilePath = path.join(os.tmpdir(), `imagemin-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`)
 
   try {
     const ext = path.extname(filename).slice(1).toLowerCase()
@@ -53,13 +50,16 @@ const compression = async (filename, dry) => {
         .png({ animated: true, compressionLevel: 9, quality: 100 }) // Still waiting for APNG support though (`animated` doesn’t seem to have an effect), https://github.com/lovell/sharp/issues/2375
         .toFile(tempFilePath)
     } else if (outputFormat === 'gif') {
-      const execFileAsync = util.promisify(execFile)
-      try {
-        await execFileAsync(gifsicle, ['-O3', filename, '-o', tempFilePath], { stdio: ['ignore', 'ignore', 'ignore'] })
-      } catch (err) {
-        logMessage(`Skipped ${filename} (appears corrupt)`, dry)
-        return 0
-      }
+      await sharp(filename, { pages: -1 })
+        .gif({
+          reuse: true,               // Preserve original palette for lossless quality (default)
+          effort: 10,                // Maximum compression effort
+          dither: 0,                 // No dithering = lossless quality
+          interFrameMaxError: 0,     // No transparency errors = lossless (default)
+          interPaletteMaxError: 0,   // Perfect palette match = lossless
+          colors: 256                // Full palette available (default)
+        })
+        .toFile(tempFilePath)
     } else if (outputFormat === 'webp') {
       await sharp(filename, { pages: -1 })
         .webp({ animated: true, lossless: true })
