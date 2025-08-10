@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { execSync } from 'child_process'
 import { fileURLToPath } from 'url'
@@ -28,7 +29,7 @@ function copyFiles(srcDir, destDir) {
 // Function to check if images are compressed
 const ignoreFiles = ['test#corrupt.gif']
 
-function areImagesCompressed(dir) {
+function areImagesCompressed(dir, originalDir = testFolder) {
   const uncompressedFiles = []
   const allCompressed = fs.readdirSync(dir).every(file => {
     if (ignoreFiles.includes(file)) {
@@ -38,7 +39,7 @@ function areImagesCompressed(dir) {
     const ext = path.extname(file).slice(1)
     if (!allowedFileTypes.includes(ext)) return true
     const filePath = path.join(dir, file)
-    const originalFilePath = path.join(testFolder, file)
+    const originalFilePath = path.join(originalDir, file)
     try {
       const originalStats = fs.statSync(originalFilePath)
       const compressedStats = fs.statSync(filePath)
@@ -85,11 +86,22 @@ describe('Imagemin Guard', () => {
     // Ensure images in temp folder are not already compressed
     assert.strictEqual(areImagesAlreadyCompressed(testFolderGit), true)
 
-    // Run imagemin-guard script
-    execSync(`node ${imageminGuardScript} --ignore=media/test`)
+    // Run the script in a completely isolated temporary directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-test-'))
+    const tempTestFolder = path.join(tempDir, 'test')
 
-    // Verify images are compressed
-    const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
+    // Copy test files to isolated temp directory
+    copyFiles(testFolder, tempTestFolder)
+
+    // Run imagemin-guard with explicit directory - only files in tempDir will be processed
+    execSync(`node "${imageminGuardScript}" --directory="${tempDir}"`, { cwd: tempDir })
+
+    // Check results from the isolated temp files
+    const { allCompressed, uncompressedFiles } = areImagesCompressed(tempTestFolder, testFolder)
+
+    // Clean up
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
     if (uncompressedFiles.length > 0) {
       console.log('The following files were not compressed:', uncompressedFiles.join(', '))
     }
