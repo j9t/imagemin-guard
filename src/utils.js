@@ -50,7 +50,7 @@ const compression = async (filename, dry) => {
     const formatConfigs = {
       png: {
         options: { pages: -1 },
-        settings: { animated: true, compressionLevel: 9, quality: 100 } // Still waiting for APNG support though (`animated` doesn't seem to have an effect), https://github.com/lovell/sharp/issues/2375
+        settings: { animated: true, compressionLevel: 9, quality: 100 } // Still waiting for APNG support though (`animated` doesn’t seem to have an effect), https://github.com/lovell/sharp/issues/2375
       },
       gif: {
         options: { pages: -1 },
