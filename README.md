@@ -98,7 +98,7 @@ Roughly like this:
 
 ## How Does Imagemin Guard Work?
 
-Imagemin Guard is a Node script that currently uses [sharp](https://www.npmjs.com/package/sharp) and [gifsicle](https://www.npmjs.com/package/gifsicle) under the hood.
+Imagemin Guard is a Node script that uses [sharp](https://www.npmjs.com/package/sharp) under the hood.
 
 Automated compression works by monitoring whether a given [change list](https://webglossary.info/terms/change-list/) includes any PNGs, JPGs, GIFs, WebPs, or AVIFs. It’s initiated by a Git hook. Only those images are compressed where there is an improvement. The compressed images can then be committed to the underlying repository.
 
