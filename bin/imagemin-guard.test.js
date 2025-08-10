@@ -36,7 +36,7 @@ function areImagesCompressed(dir, originalDir = testFolder) {
       // console.info(`Ignoring file: ${file}`)
       return true
     }
-    const ext = path.extname(file).slice(1)
+    const ext = path.extname(file).slice(1).toLowerCase()
     if (!allowedFileTypes.includes(ext)) return true
     const filePath = path.join(dir, file)
     const originalFilePath = path.join(originalDir, file)
@@ -59,7 +59,7 @@ function areImagesCompressed(dir, originalDir = testFolder) {
 // Function to check if images are already compressed
 function areImagesAlreadyCompressed(dir) {
   return fs.readdirSync(dir).some(file => {
-    const ext = path.extname(file).slice(1)
+    const ext = path.extname(file).slice(1).toLowerCase()
     if (!allowedFileTypes.includes(ext)) return false
     const filePath = path.join(dir, file)
     const originalFilePath = path.join(testFolder, file)
@@ -97,7 +97,7 @@ describe('Imagemin Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageminGuardScript}"`)
+      execSync(`node '${imageminGuardScript}'`)
     } finally {
       process.chdir(originalCwd)
     }
@@ -130,8 +130,8 @@ describe('Imagemin Guard', () => {
     // Stage files
     await git.add('.')
 
-    // Run imagemin-guard script with --staged option
-    execSync(`node ${imageminGuardScript} --staged`, { cwd: testFolderGit })
+    // Run imagemin-guard script with “--staged” option
+    execSync(`node '${imageminGuardScript}' --staged`, { cwd: testFolderGit })
 
     // Verify images are compressed
     const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
@@ -146,7 +146,7 @@ describe('Imagemin Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node ${imageminGuardScript} --dry`)
+    execSync(`node '${imageminGuardScript}' --dry`)
     const newStats = fs.readdirSync(testFolderGit).map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
@@ -155,7 +155,7 @@ describe('Imagemin Guard', () => {
       const newFile = newStats[index]
       assert.strictEqual(newFile.file, original.file)
       assert.strictEqual(newFile.stats.size, original.stats.size)
-      assert.deepStrictEqual(newFile.stats.mtime, original.stats.mtime)
+      assert.strictEqual(newFile.stats.mtime.getTime(), original.stats.mtime.getTime())
     })
   })
 })
