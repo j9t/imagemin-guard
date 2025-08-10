@@ -1,13 +1,17 @@
-const fs = require('fs')
-const path = require('path')
-const { execSync } = require('child_process')
-const simpleGit = require('simple-git')
+import fs from 'fs'
+import path from 'path'
+import { execSync } from 'child_process'
+import { fileURLToPath } from 'url'
+import { test, describe, before, after } from 'node:test'
+import assert from 'node:assert'
+import simpleGit from 'simple-git'
+import { fileTypes as allowedFileTypes } from '../src/index.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const testFolder = path.join(__dirname, '../media/test')
 const testFolderGit = path.join(__dirname, '../media/test-git')
 const imageminGuardScript = path.join(__dirname, '../bin/imagemin-guard.js')
-// Crutch to avoid files like .DS_Store to sneak in
-// @@ Consolidate with package, to keep image definitions DRY (once there’s better Jest ESM support?)
-const allowedFileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp']
 
 // Function to copy files
 function copyFiles(srcDir, destDir) {
@@ -65,12 +69,12 @@ function areImagesAlreadyCompressed(dir) {
 }
 
 describe('Imagemin Guard', () => {
-  beforeAll(() => {
+  before(() => {
     // Back up original images
     copyFiles(testFolder, testFolderGit)
   })
 
-  afterAll(() => {
+  after(() => {
     // Clean up temporary directory
     if (fs.existsSync(testFolderGit)) {
       fs.rmSync(testFolderGit, { recursive: true, force: true })
@@ -79,7 +83,7 @@ describe('Imagemin Guard', () => {
 
   test('Compress images', () => {
     // Ensure images in temp folder are not already compressed
-    expect(areImagesAlreadyCompressed(testFolderGit)).toBe(true)
+    assert.strictEqual(areImagesAlreadyCompressed(testFolderGit), true)
 
     // Run imagemin-guard script
     execSync(`node ${imageminGuardScript} --ignore=media/test`)
@@ -89,7 +93,7 @@ describe('Imagemin Guard', () => {
     if (uncompressedFiles.length > 0) {
       console.log('The following files were not compressed:', uncompressedFiles.join(', '))
     }
-    expect(allCompressed).toBe(true)
+    assert.strictEqual(allCompressed, true)
   })
 
   test('Compress only staged images', async () => {
@@ -116,7 +120,7 @@ describe('Imagemin Guard', () => {
     if (uncompressedFiles.length > 0) {
       console.log('The following files were not compressed:', uncompressedFiles.join(', '))
     }
-    expect(allCompressed).toBe(true)
+    assert.strictEqual(allCompressed, true)
   })
 
   test('Do not modify files in dry run', () => {
@@ -131,9 +135,9 @@ describe('Imagemin Guard', () => {
     })
     originalStats.forEach((original, index) => {
       const newFile = newStats[index]
-      expect(newFile.file).toStrictEqual(original.file)
-      expect(newFile.stats.size).toStrictEqual(original.stats.size)
-      expect(newFile.stats.mtime).toStrictEqual(original.stats.mtime)
+      assert.strictEqual(newFile.file, original.file)
+      assert.strictEqual(newFile.stats.size, original.stats.size)
+      assert.deepStrictEqual(newFile.stats.mtime, original.stats.mtime)
     })
   })
 })

@@ -5,6 +5,9 @@ import simpleGit from 'simple-git'
 import { parseArgs, styleText } from 'node:util'
 import { utils } from './utils.js'
 
+// Files to be compressed
+export const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp'];
+
 (async () => {
   const options = {
     dry: { type: 'boolean', default: false },
@@ -22,8 +25,6 @@ import { utils } from './utils.js'
     }
   }
 
-  // Files to be compressed
-  const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp']
   console.log(`(Search pattern: ${fileTypes.join(', ')})\n`)
 
   let savedKB = 0
