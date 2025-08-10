@@ -13,11 +13,13 @@ const logMessage = (message, dry, color = 'yellow') => {
 
 const compression = async (filename, dry) => {
   const filenameBackup = `${filename}.bak`
-  try {
-    await fs.promises.copyFile(filename, filenameBackup)
-  } catch (error) {
-    console.error(styleText('red', `Error creating backup for ${filename}:`), error)
-    return 0
+  if (!dry) {
+    try {
+      await fs.promises.copyFile(filename, filenameBackup)
+    } catch (error) {
+      console.error(styleText('red', `Error creating backup for ${filename}:`), error)
+      return 0
+    }
   }
 
   const fileSizeBefore = await size(filename)
@@ -111,17 +113,34 @@ const compression = async (filename, dry) => {
 
   } catch (error) {
 
-    console.error(styleText('red', `Error compressing ${filename}:`), error)
-    await fs.promises.rename(filenameBackup, filename)
+    // Check if this is a file corruption error
+    if (error.message && (
+      error.message.includes('corrupt header') || 
+      error.message.includes('Unexpected end of') ||
+      error.message.includes('Invalid') ||
+      error.message.includes('gifload:') ||
+      error.message.includes('pngload:') ||
+      error.message.includes('jpegload:')
+    )) {
+      logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow')
+    } else {
+      console.error(styleText('red', `Error compressing ${filename}:`), error)
+    }
+    
+    if (!dry) {
+      await fs.promises.rename(filenameBackup, filename)
+    }
     return 0
 
   } finally {
 
-    try {
-      await fs.promises.unlink(filenameBackup)
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), error)
+    if (!dry) {
+      try {
+        await fs.promises.unlink(filenameBackup)
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), error)
+        }
       }
     }
   }
