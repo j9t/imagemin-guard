@@ -28,6 +28,7 @@
   "license": "Apache-2.0",
   "name": "@j9t/imagemin-guard",
   "overrides": {
+    "_comment": "@@ Remove",
     "cross-spawn": "^7.0.5",
     "got": "^11.8.5",
     "http-cache-semantics": "^4.1.1",
