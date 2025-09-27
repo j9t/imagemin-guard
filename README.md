@@ -116,7 +116,7 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 #### “npx: command not found”
 
-If Git hooks fail with “npx: command not found,” make sure to install (`npm i -D @j9t/imagemin-guard`) and use the binary directly:
+If Git hooks fail with “npx: command not found,” make sure to install (`npm i -D @j9t/imagemin-guard`) and to refer to the binary directly in both `pre-commit` hook and `postprepare` script:
 
 ```console
 #!/bin/sh
