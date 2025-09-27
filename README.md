@@ -116,12 +116,12 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 #### “npx: command not found”
 
-If Git hooks fail with “npx: command not found,” consider adding the `PATH` directly to your hook:
+If Git hooks fail with “npx: command not found,” make sure to install (`npm i -D @j9t/imagemin-guard`) and use the binary directly:
 
-```bash
+```console
 #!/bin/sh
-export PATH="node_modules/.bin:$PATH"
-npx imagemin-guard --staged
+export PATH="$PWD/node_modules/.bin:$PATH"
+./node_modules/.bin/imagemin-guard --staged
 ```
 
 The issue can arise in GUI Git clients (VS Code, GitHub Desktop, etc.) or with Node version managers, as these environments may not inherit your shell's `PATH`/Node environment. (This affects any tool using npx in hooks.)
