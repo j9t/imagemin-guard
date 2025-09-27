@@ -55,9 +55,32 @@ To compress images already in the code base, run Imagemin Guard once by calling
 npx imagemin-guard
 ```
 
-For automated use, Imagemin Guard should be triggered through a [Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) or a related tool like [Husky](https://github.com/typicode/husky) (`npm i -D husky`), for example on `pre-commit`.
+For automated use, Imagemin Guard should be triggered through a [Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) on `pre-commit`. You can choose between native Git hooks (recommended for simple projects) or [Husky](https://github.com/typicode/husky).
 
-If you already use Husky, run the following commands in your project root (you can copy and execute them at once):
+##### Native Git Hooks
+
+Native Git hooks are simpler to set up and don’t require additional dependencies. Run these commands from your project root:
+
+```console
+mkdir -p .githooks;\
+cat > .githooks/pre-commit << 'EOF'
+#!/bin/sh
+npx imagemin-guard --staged
+EOF
+chmod +x .githooks/pre-commit;\
+git config core.hooksPath .githooks;\
+git add .githooks/pre-commit;\
+git commit -m "feat: add Git pre-commit hook for Imagemin Guard";\
+npm pkg set scripts.postprepare="mkdir -p .githooks && cat > .githooks/pre-commit << 'EOF'
+#!/bin/sh
+npx imagemin-guard --staged
+EOF
+chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
+```
+
+##### Husky
+
+If you already use [Husky](https://typicode.github.io/husky/), run the following commands in your project root (you can copy and execute them at once):
 
 ```console
 grep -qxF "npx imagemin-guard --staged" .husky/pre-commit || echo "\nnpx imagemin-guard --staged" >> .husky/pre-commit;\
@@ -77,9 +100,9 @@ git commit -m "feat: add Husky pre-commit hook for Imagemin Guard";\
 npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/pre-commit || echo '\nnpx imagemin-guard --staged' >> .husky/pre-commit"
 ```
 
-(For a quick explanation, what this does is install Husky as a development dependency, initialize Husky, add a pre-commit hook that triggers Imagemin Guard, commit the hook, and link the hook to a `postprepare` script so that it’s added to the repository whenever someone installs the package. As this is a new adjusted method to automatically run Imagemin Guard, please [report issues or make suggestions](https://github.com/j9t/imagemin-guard/issues/new).)
+(The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
 
-Be aware that the way this automation works, compressed images will show as changed images. That is, if you check in images that aren’t compressed well enough, you might do one commit to check those images into version control, to then find some or all images changed again, requiring another commit. As many editors show diffs also for images, this is currently the intended behavior.
+**Important:** When you commit images that have not yet been compressed, the automated compression process (triggered by the pre-commit hook) will modify those image files to reduce their size. As a result, after your initial commit attempt, you will see these images appear as changed files in Git. To include the optimized images in your repository, you need to stage and commit them again. In rare cases, if further compression is possible, you may need to repeat this process until no further changes are detected. This workflow is intentional and ensures that only optimally compressed images are committed. Many editors can display diffs for images, helping you review these changes.
 
 ### Parameters
 
