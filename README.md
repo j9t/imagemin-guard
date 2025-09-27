@@ -102,7 +102,7 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 (The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
 
-**Important:** Automated compression will cause compressed images to appear as changed files in Git. If you commit images that aren’t compressed well enough, you might need to make a second (or even third) commit after Imagemin Guard processes them. Since many editors show diffs for images, this is the intended behavior.
+**Important:** When you commit images that have not yet been compressed, the automated compression process (triggered by the pre-commit hook) will modify those image files to reduce their size. As a result, after your initial commit attempt, you will see these images appear as changed files in Git. To include the optimized images in your repository, you need to stage and commit them again. In rare cases, if further compression is possible, you may need to repeat this process until no further changes are detected. This workflow is intentional and ensures that only optimally compressed images are committed. Many editors can display diffs for images, helping you review these changes.
 
 ### Parameters
 
