@@ -124,7 +124,7 @@ export PATH="node_modules/.bin:$PATH"
 npx imagemin-guard --staged
 ```
 
-The issue may arise because certain clients or editors may not inherit your shell’s `PATH`/Node environment, whether using native Git hooks or Husky. (This affects any tool using npx in hooks.)
+The issue can arise in GUI Git clients (VS Code, GitHub Desktop, etc.) or with Node version managers, as these environments may not inherit your shell's `PATH`/Node environment. (This affects any tool using npx in hooks.)
 
 ## What Does the Output Look Like?
 
