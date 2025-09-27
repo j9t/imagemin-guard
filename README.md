@@ -112,6 +112,20 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files in `git diff` and only compresses those files—that approach makes Imagemin Guard more efficient in operation.
 
+### Troubleshooting
+
+#### “npx: command not found”
+
+If Git hooks fail with “npx: command not found,” make sure to install (`npm i -D @j9t/imagemin-guard`) and to refer to the binary directly in the `pre-commit` hook (and, not detailed here, also in the `postprepare` script):
+
+```console
+#!/bin/sh
+export PATH="$PWD/node_modules/.bin:$PATH"
+./node_modules/.bin/imagemin-guard --staged
+```
+
+This issue can arise in GUI Git clients (VS Code, GitHub Desktop, etc.) or with Node version managers, as these environments may not inherit your shell's `PATH`/Node environment. This affects any tool using npx in hooks.
+
 ## What Does the Output Look Like?
 
 Roughly like this:
