@@ -72,7 +72,7 @@ git config core.hooksPath .githooks;\
 git add .githooks/pre-commit;\
 git commit -m "feat: add Git pre-commit hook for Imagemin Guard";\
 npm pkg set scripts.postprepare="mkdir -p .githooks && cat > .githooks/pre-commit << 'EOF'
-#!/bin/sh
+#\!/bin/sh
 npx imagemin-guard --staged
 EOF
 chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
