@@ -7,7 +7,7 @@
   "dependencies": {
     "globby": "^15.0.0",
     "sharp": "^0.34.3",
-    "simple-git": "^3.28.0"
+    "simple-git": "^3.30.0"
   },
   "description": "Ensure losslessly compressed PNG, JPG, GIF, WebP, and AVIF images (suitable for manual and automatic compression)",
   "homepage": "https://github.com/j9t/imagemin-guard",
