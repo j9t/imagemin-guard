@@ -102,9 +102,9 @@ const compression = async (filename, dry) => {
     }
 
     // On Windows, sharp may not immediately release the file handle
-    // Add a small delay to ensure the file is fully written and closed
+    // Add a delay to ensure the file is fully written and closed
     if (process.platform === 'win32') {
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
     }
 
     const fileSizeAfter = await size(tempFilePath)
@@ -118,7 +118,11 @@ const compression = async (filename, dry) => {
       status = 'Compressed'
       details = `${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)}`
       if (!dry) {
-        await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
+        // Use read+write instead of copyFile to handle Windows file locking better
+        await retryFileOperation(async () => {
+          const data = await fs.promises.readFile(tempFilePath)
+          await fs.promises.writeFile(filename, data)
+        })
       }
     } else if (fileSizeAfter > fileSizeBefore) {
       color = 'blue'
