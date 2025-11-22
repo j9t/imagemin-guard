@@ -59,7 +59,16 @@ const compression = async (filename, dry) => {
       throw new Error(`Cannot determine file type for ${filename}—no extension found`)
     }
 
-    const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses “jpeg” instead of “jpg”
+    // Skip animated WebP on Windows due to file locking issues
+    if (process.platform === 'win32' && ext === 'webp') {
+      const metadata = await sharp(filename).metadata()
+      if (metadata.pages && metadata.pages > 1) {
+        logMessage(`Skipped ${filename} (animated WebP not supported on Windows)`, dry, 'yellow')
+        return 0
+      }
+    }
+
+    const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses "jpeg" instead of "jpg"
 
     // Compression configuration for each format
     const formatConfigs = {
@@ -101,12 +110,6 @@ const compression = async (filename, dry) => {
         .toFile(tempFilePath)
     }
 
-    // On Windows, sharp may not immediately release the file handle
-    // Add a delay to ensure the file is fully written and closed
-    if (process.platform === 'win32') {
-      await new Promise(resolve => setTimeout(resolve, 200))
-    }
-
     const fileSizeAfter = await size(tempFilePath)
 
     let color = 'white'
@@ -118,11 +121,7 @@ const compression = async (filename, dry) => {
       status = 'Compressed'
       details = `${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)}`
       if (!dry) {
-        // Use read+write instead of copyFile to handle Windows file locking better
-        await retryFileOperation(async () => {
-          const data = await fs.promises.readFile(tempFilePath)
-          await fs.promises.writeFile(filename, data)
-        })
+        await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
       }
     } else if (fileSizeAfter > fileSizeBefore) {
       color = 'blue'
