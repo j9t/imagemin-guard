@@ -11,6 +11,21 @@ const logMessage = (message, dry, color = 'yellow') => {
   console.info(styleText(color, `${prefix}${message}`))
 }
 
+// Retry file operations to handle file locking issues
+const retryFileOperation = async (operation, maxRetries = 5, delayMs = 100) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation()
+    } catch (error) {
+      if ((error.code === 'EPERM' || error.code === 'UNKNOWN') && i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)))
+      } else {
+        throw error
+      }
+    }
+  }
+}
+
 const compression = async (filename, dry) => {
   const filenameBackup = `${filename}.bak`
   if (!dry) {
@@ -97,7 +112,7 @@ const compression = async (filename, dry) => {
       status = 'Compressed'
       details = `${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)}`
       if (!dry) {
-        await fs.promises.copyFile(tempFilePath, filename)
+        await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
       }
     } else if (fileSizeAfter > fileSizeBefore) {
       color = 'blue'
@@ -108,11 +123,11 @@ const compression = async (filename, dry) => {
     logMessage(`${status} ${filename} (${details})`, dry, color)
 
     if (dry) {
-      await fs.promises.unlink(tempFilePath)
+      await retryFileOperation(() => fs.promises.unlink(tempFilePath))
       return 0
     }
 
-    await fs.promises.unlink(tempFilePath)
+    await retryFileOperation(() => fs.promises.unlink(tempFilePath))
 
     if (fileSizeAfter === 0) {
       console.error(styleText('red', `Error compressing ${filename}: Compressed file size is 0`))
@@ -137,7 +152,7 @@ const compression = async (filename, dry) => {
     }
 
     if (!dry) {
-      await fs.promises.rename(filenameBackup, filename)
+      await retryFileOperation(() => fs.promises.rename(filenameBackup, filename))
     }
     return 0
 
@@ -145,7 +160,7 @@ const compression = async (filename, dry) => {
 
     if (!dry) {
       try {
-        await fs.promises.unlink(filenameBackup)
+        await retryFileOperation(() => fs.promises.unlink(filenameBackup))
       } catch (error) {
         if (error.code !== 'ENOENT') {
           console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), error)
