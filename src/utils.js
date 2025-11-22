@@ -101,6 +101,12 @@ const compression = async (filename, dry) => {
         .toFile(tempFilePath)
     }
 
+    // On Windows, sharp may not immediately release the file handle
+    // Add a small delay to ensure the file is fully written and closed
+    if (process.platform === 'win32') {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+
     const fileSizeAfter = await size(tempFilePath)
 
     let color = 'white'
