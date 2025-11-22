@@ -97,7 +97,7 @@ describe('Imagemin Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node '${imageminGuardScript}'`)
+      execSync(`node "${imageminGuardScript}"`)
     } finally {
       process.chdir(originalCwd)
     }
@@ -131,7 +131,7 @@ describe('Imagemin Guard', () => {
     await git.add('.')
 
     // Run imagemin-guard script with “--staged” option
-    execSync(`node '${imageminGuardScript}' --staged`, { cwd: testFolderGit })
+    execSync(`node "${imageminGuardScript}" --staged`, { cwd: testFolderGit })
 
     // Verify images are compressed
     const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
@@ -146,7 +146,7 @@ describe('Imagemin Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node '${imageminGuardScript}' --dry`)
+    execSync(`node "${imageminGuardScript}" --dry`)
     const newStats = fs.readdirSync(testFolderGit).map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
