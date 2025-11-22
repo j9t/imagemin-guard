@@ -59,15 +59,6 @@ const compression = async (filename, dry) => {
       throw new Error(`Cannot determine file type for ${filename}—no extension found`)
     }
 
-    // Skip animated WebP on Windows due to file locking issues
-    if (process.platform === 'win32' && ext === 'webp') {
-      const metadata = await sharp(filename).metadata()
-      if (metadata.pages && metadata.pages > 1) {
-        logMessage(`Skipped ${filename} (animated WebP not supported on Windows)`, dry, 'yellow')
-        return 0
-      }
-    }
-
     const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses "jpeg" instead of "jpg"
 
     // Compression configuration for each format
