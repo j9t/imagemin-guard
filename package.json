@@ -5,7 +5,7 @@
     "imagemin-merlin": "bin/imagemin-guard.js"
   },
   "dependencies": {
-    "globby": "^15.0.0",
+    "globby": "^16.0.0",
     "sharp": "^0.34.5",
     "simple-git": "^3.30.0"
   },
