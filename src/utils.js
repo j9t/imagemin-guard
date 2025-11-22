@@ -59,7 +59,7 @@ const compression = async (filename, dry) => {
       throw new Error(`Cannot determine file type for ${filename}—no extension found`)
     }
 
-    const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses "jpeg" instead of "jpg"
+    const outputFormat = ext === 'jpg' ? 'jpeg' : ext // sharp uses “jpeg” instead of “jpg”
 
     // Compression configuration for each format
     const formatConfigs = {
