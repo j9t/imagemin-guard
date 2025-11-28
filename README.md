@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@j9t/imagemin-guard.svg)](https://www.npmjs.com/package/@j9t/imagemin-guard) [![Build status](https://github.com/j9t/imagemin-guard/workflows/Tests/badge.svg)](https://github.com/j9t/imagemin-guard/actions)
 
-(This project has been based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Imagemin Guard supports two additional file formats—WebP and AVIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/imagemin-guard-4/) anymore.)
+(This project was based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Imagemin Guard supports two additional file formats—WebP and AVIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/imagemin-guard-4/) anymore.)
 
 Imagemin Guard takes care of near-lossless compression of your images, to help you avoid bloat in your repositories. It makes it convenient and as safe as possible to automatically compress PNG, JPG, GIF, WebP, and AVIF images.
 
