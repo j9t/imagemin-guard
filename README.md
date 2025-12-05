@@ -1,6 +1,6 @@
 # Imagemin Guard
 
-[![npm version](https://img.shields.io/npm/v/@j9t/imagemin-guard.svg)](https://www.npmjs.com/package/@j9t/imagemin-guard) [![Build status](https://github.com/j9t/imagemin-guard/workflows/Tests/badge.svg)](https://github.com/j9t/imagemin-guard/actions)
+[![npm version](https://img.shields.io/npm/v/@j9t/imagemin-guard.svg)](https://www.npmjs.com/package/@j9t/imagemin-guard) [![Build status](https://github.com/j9t/imagemin-guard/workflows/Tests/badge.svg)](https://github.com/j9t/imagemin-guard/actions) [![Socket](https://badge.socket.dev/npm/package/@j9t/imagemin-guard)](https://socket.dev/npm/package/@j9t/imagemin-guard)
 
 (This project was based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Imagemin Guard supports two additional file formats—WebP and AVIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/imagemin-guard-4/) anymore.)
 
