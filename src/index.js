@@ -29,7 +29,9 @@ export async function runImageminGuard() {
     }
   }
 
-  console.log(`(Search pattern: ${fileTypes.join(', ')})\n`)
+  if (!argv.quiet) {
+    console.log(`(Search pattern: ${fileTypes.join(', ')})\n`)
+  }
 
   let savedKB = 0
 
@@ -37,19 +39,32 @@ export async function runImageminGuard() {
   const createLimiter = (concurrency) => {
     let active = 0
     const queue = []
+    let head = 0 // Index-based queue head to avoid O(n) shift
+
+    const maybeCompact = () => {
+      // Compact when a lot of items have been consumed to avoid unbounded growth
+      // Heuristic: When head is large and at least half was consumed
+      if (head > 1024 && head >= (queue.length - head)) {
+        queue.splice(0, head)
+        head = 0
+      }
+    }
+
     const next = () => {
-      if (active >= concurrency || queue.length === 0) return
+      if (active >= concurrency) return
+      if (head >= queue.length) return
       active++
-      const { fn, resolve, reject } = queue.shift()
+      const { fn, resolve, reject } = queue[head++]
       Promise.resolve()
         .then(fn)
         .then(resolve, reject)
         .finally(() => {
           active--
+          maybeCompact()
           next()
         })
     }
-    return (fn) => new Promise((resolve, reject) => {
+    return fn => new Promise((resolve, reject) => {
       queue.push({ fn, resolve, reject })
       next()
     })
@@ -85,22 +100,30 @@ export async function runImageminGuard() {
   const getFilePattern = (ignore) => {
     const patterns = []
 
-    fileTypes.forEach((fileType) => {
-      patterns.push(`**/*.${fileType}`, `**/*.${fileType.toUpperCase()}`)
-    })
+    // Rely on `caseSensitiveMatch: false` instead of duplicating upper/lower-case
+    for (const fileType of fileTypes) {
+      patterns.push(`**/*.${fileType}`)
+    }
 
-    if (ignore) {
-      const ignorePaths = ignore.split(',')
-      ignorePaths.forEach((path) => {
-        patterns.push(`!${path}`)
-      })
+    const ignoreList = (ignore || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+
+    for (const p of ignoreList) {
+      patterns.push(p.startsWith('!') ? p : `!${p}`)
     }
 
     return patterns
   }
 
   const findFiles = async (patterns, options = {}) => {
-    return globby(patterns, { gitignore: true, ...options })
+    return globby(patterns, {
+      gitignore: true,
+      onlyFiles: true,
+      caseSensitiveMatch: false,
+      ...options
+    })
   }
 
   const patterns = getFilePattern(argv.ignore)
@@ -117,12 +140,26 @@ export async function runImageminGuard() {
       // Filter by allowed extensions
       const allowedExts = new Set(fileTypes)
       const byExt = stagedFiles.filter(f => allowedExts.has(path.extname(f).slice(1).toLowerCase()))
-      // Apply `--ignore` filters if present
-      const ignore = (argv.ignore || '').split(',').map(s => s.trim()).filter(Boolean)
-      compressionFiles = byExt.filter(f => {
-        // Handle simple `!path` style ignores as provided
-        return !ignore.some(ig => ig && (f === ig.replace(/^!/, '') || f.startsWith(ig.replace(/^!/, '').replace(/\*$|\/$/, ''))))
-      })
+      // Apply `--ignore` using the same glob semantics as non-staged by delegating to globby
+      const ignoreList = (argv.ignore || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(p => (p.startsWith('!') ? p : `!${p}`))
+
+      if (ignoreList.length > 0) {
+        // Use globby to filter the staged list with identical options; avoid repo-wide scan
+        // Pass the staged file paths as include patterns and the ignores as negatives
+        const filtered = await globby([...byExt, ...ignoreList], {
+          gitignore: true,
+          expandDirectories: false,
+          onlyFiles: true,
+          caseSensitiveMatch: false
+        })
+        compressionFiles = filtered
+      } else {
+        compressionFiles = byExt
+      }
       await compress(compressionFiles, argv.dry)
     } catch (error) {
       console.error(error)
