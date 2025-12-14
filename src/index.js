@@ -37,6 +37,7 @@ export async function runImageminGuard() {
 
   // Tiny in-house concurrency limiter
   const createLimiter = (concurrency) => {
+		concurrency = Math.max(1, Number(concurrency) || 1)
     let active = 0
     const queue = []
     let head = 0 // Index-based queue head to avoid O(n) shift
