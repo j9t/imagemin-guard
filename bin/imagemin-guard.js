@@ -4,7 +4,7 @@ import { runImageminGuard } from '../src/index.js'
 
 try {
   await runImageminGuard()
-} catch (error) {
-  console.error('Error running Imagemin Guard:', error.message)
+} catch (err) {
+  console.error('Error running Imagemin Guard:', err.message)
   process.exit(1)
 }

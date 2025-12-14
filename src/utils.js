@@ -16,11 +16,11 @@ const retryFileOperation = async (operation, maxRetries = 5, delayMs = 100) => {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation()
-    } catch (error) {
-      if ((error.code === 'EPERM' || error.code === 'UNKNOWN') && i < maxRetries - 1) {
+    } catch (err) {
+      if ((err.code === 'EPERM' || err.code === 'UNKNOWN') && i < maxRetries - 1) {
         await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)))
       } else {
-        throw error
+        throw err
       }
     }
   }
@@ -146,8 +146,8 @@ const compression = async (filename, dry, quiet = false) => {
     if (!tempConsumed) {
       try {
         await retryFileOperation(() => fs.promises.unlink(tempFilePath))
-      } catch (e) {
-        if (e.code !== 'ENOENT') throw e
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw err
       }
     }
 
@@ -157,20 +157,20 @@ const compression = async (filename, dry, quiet = false) => {
 
     return fileSizeAfter < fileSizeBefore ? fileSizeBefore - fileSizeAfter : 0
 
-  } catch (error) {
+  } catch (err) {
 
     // Check if this is a file corruption error
-    if (error.message && (
-      error.message.includes('corrupt header') ||
-      error.message.includes('Unexpected end of') ||
-      error.message.includes('Invalid') ||
-      error.message.includes('gifload:') ||
-      error.message.includes('pngload:') ||
-      error.message.includes('jpegload:')
+    if (err.message && (
+      err.message.includes('corrupt header') ||
+      err.message.includes('Unexpected end of') ||
+      err.message.includes('Invalid') ||
+      err.message.includes('gifload:') ||
+      err.message.includes('pngload:') ||
+      err.message.includes('jpegload:')
     )) {
       logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow', quiet)
     } else {
-      console.error(styleText('red', `Error compressing ${filename}:`), error)
+      console.error(styleText('red', `Error compressing ${filename}:`), err)
     }
     return 0
 
@@ -180,9 +180,9 @@ const compression = async (filename, dry, quiet = false) => {
     if (!dry && replacementSucceeded) {
       try {
         await retryFileOperation(() => fs.promises.unlink(filenameBackup))
-      } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), error)
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), err)
         }
       }
     }

@@ -161,8 +161,8 @@ export async function runImageminGuard() {
         compressionFiles = byExt
       }
       await compress(compressionFiles, argv.dry)
-    } catch (error) {
-      console.error(error)
+    } catch (err) {
+      console.error(err)
     }
   } else {
     files = await findFiles(patterns)
