@@ -1,5 +1,3 @@
-import globals from 'globals'
-
 export default [
   {
     ignores: [
@@ -12,7 +10,9 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-				...globals.node
+				console: 'readonly',
+				process: 'readonly',
+				setTimeout: 'readonly'
       }
     },
     rules: {
