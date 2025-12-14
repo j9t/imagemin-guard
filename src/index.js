@@ -37,7 +37,7 @@ export async function runImageminGuard() {
 
   // Tiny in-house concurrency limiter
   const createLimiter = (concurrency) => {
-		concurrency = Math.max(1, Number(concurrency) || 1)
+    concurrency = Math.max(1, Number(concurrency) || 1)
     let active = 0
     const queue = []
     let head = 0 // Index-based queue head to avoid O(n) shift
@@ -83,7 +83,7 @@ export async function runImageminGuard() {
     try {
       sharp.concurrency(perTaskThreads)
     } catch {
-			// Best-effort; ignore if not supported (could log in debug mode)
+      // Best-effort; ignore if not supported (could log in debug mode)
     }
 
     const limit = createLimiter(desiredFileConcurrency)

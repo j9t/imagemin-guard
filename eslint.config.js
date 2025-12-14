@@ -1,18 +1,18 @@
 export default [
   {
     ignores: [
-    	'media/',
-    	'node_modules/**'
-		]
+      'media/',
+      'node_modules/**'
+    ]
   },
   {
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-				console: 'readonly',
-				process: 'readonly',
-				setTimeout: 'readonly'
+        console: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly'
       }
     },
     rules: {
