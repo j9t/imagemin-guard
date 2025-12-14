@@ -252,7 +252,9 @@ describe('Imagemin Guard', () => {
       const origInside = fs.statSync(path.join(tempTestFolder, oneFile))
       // Since original may change, assert that the file inside ignored directory remained unchanged, by comparing to its own pre-run snapshot
       assert.strictEqual(inside.size, preInside.size)
-      assert.ok(origInside)
+      // File outside should also be unchanged due to ignore pattern
+      assert.strictEqual(origInside.size, preIgnored.size)
+      assert.strictEqual(origInside.mtime.getTime(), preIgnored.mtime.getTime())
     }
 
     fs.rmSync(tempDir, { recursive: true, force: true })
