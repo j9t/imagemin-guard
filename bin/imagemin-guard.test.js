@@ -225,6 +225,12 @@ describe('Imagemin Guard', () => {
       preInside = fs.statSync(path.join(subDir, oneFile))
     }
 
+    // Snapshot before running CLI for file-level ignore check
+    let preIgnored
+    if (oneFile) {
+      preIgnored = fs.statSync(path.join(tempTestFolder, oneFile))
+    }
+
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
@@ -235,9 +241,9 @@ describe('Imagemin Guard', () => {
 
     // Assert ignored file unchanged (only if there was a file to ignore explicitly)
     if (oneFile) {
-      const orig = fs.statSync(path.join(testFolder, oneFile))
       const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
-      assert.strictEqual(ignoredCopy.size >= orig.size, true)
+      assert.strictEqual(ignoredCopy.size, preIgnored.size)
+      assert.strictEqual(ignoredCopy.mtime.getTime(), preIgnored.mtime.getTime())
     }
 
     // Assert file inside ignored directory unchanged (if created)
