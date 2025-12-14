@@ -158,4 +158,96 @@ describe('Imagemin Guard', () => {
       assert.strictEqual(newFile.stats.mtime.getTime(), original.stats.mtime.getTime())
     })
   })
+
+  test('Quiet mode suppresses per-file logs but keeps summary', () => {
+    // Prepare isolated temp directory with test images
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-quiet-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    let stdout = ''
+    try {
+      process.chdir(tempDir)
+      stdout = execSync(`node "${imageminGuardScript}" --quiet`, { encoding: 'utf8' })
+    } finally {
+      process.chdir(originalCwd)
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+
+    // Summary should be present
+    assert.match(stdout, /Defensive base compression completed\./)
+    // Per-file lines like “Compressed <file>” or “Skipped <file>” should be suppressed
+    assert.strictEqual(/\bCompressed\b/.test(stdout) || /\bSkipped\b/.test(stdout), false)
+  })
+
+  test('Dry and quiet runs leave no artifacts and do not mutate files', () => {
+    // Use isolated temp directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-dry-quiet-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Snapshot sizes/mtimes
+    const before = fs.readdirSync(tempTestFolder).map(file => {
+      const filePath = path.join(tempTestFolder, file)
+      return { file, stats: fs.statSync(filePath) }
+    })
+
+    const originalCwd = process.cwd()
+    let stdout = ''
+    try {
+      process.chdir(tempDir)
+      stdout = execSync(`node "${imageminGuardScript}" --dry --quiet`, { encoding: 'utf8' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Summary present; no per-file lines
+    assert.match(stdout, /There were no images to compress\.|Defensive base compression completed\./)
+    assert.strictEqual(/\bCompressed\b/.test(stdout) || /\bSkipped\b/.test(stdout), false)
+
+    // Verify no mutations
+    const after = fs.readdirSync(tempTestFolder).map(file => {
+      const filePath = path.join(tempTestFolder, file)
+      return { file, stats: fs.statSync(filePath) }
+    })
+    before.forEach((b, i) => {
+      const a = after[i]
+      assert.strictEqual(a.file, b.file)
+      assert.strictEqual(a.stats.size, b.stats.size)
+      assert.strictEqual(a.stats.mtime.getTime(), b.stats.mtime.getTime())
+    })
+
+    // Ensure no temp or backup artifacts present
+    const entries = fs.readdirSync(tempTestFolder)
+    const hasTemp = entries.some(name => name.startsWith('.imagemin-guard-'))
+    const hasBak = entries.some(name => name.endsWith('.bak'))
+    assert.strictEqual(hasTemp, false)
+    assert.strictEqual(hasBak, false)
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('No .bak files remain after normal compression', () => {
+    // Prepare isolated temp directory with test images
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-bak-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageminGuardScript}"`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    const entries = fs.readdirSync(tempTestFolder)
+    const hasBak = entries.some(name => name.endsWith('.bak'))
+    assert.strictEqual(hasBak, false)
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
 })
