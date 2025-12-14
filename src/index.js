@@ -119,7 +119,6 @@ export async function runImageminGuard() {
       const byExt = stagedFiles.filter(f => allowedExts.has(path.extname(f).slice(1).toLowerCase()))
       // Apply `--ignore` filters if present
       const ignore = (argv.ignore || '').split(',').map(s => s.trim()).filter(Boolean)
-      const ignored = new Set(ignore)
       compressionFiles = byExt.filter(f => {
         // Handle simple `!path` style ignores as provided
         return !ignore.some(ig => ig && (f === ig.replace(/^!/, '') || f.startsWith(ig.replace(/^!/, '').replace(/\*$|\/$/, ''))))
