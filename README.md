@@ -111,6 +111,8 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files in `git diff` and only compresses those files—that approach makes Imagemin Guard more efficient in operation.
 
+* `--quiet` suppresses per‑file logs and prints only the final summary (plus errors). This reduces console noise and speeds up runs in CI and Git hooks.
+
 ### Troubleshooting
 
 #### “npx: command not found”
@@ -134,6 +136,8 @@ Roughly like this:
 * Green: The image file has been compressed.
 * White (light gray): The image file has not been changed.
 * Blue: The image file had already been compressed more aggressively than the new result, and was therefore skipped, too.
+
+Tip: Use `--quiet` to suppress these per‑file lines and keep only the final summary.
 
 ## How Does Imagemin Guard Work?
 
