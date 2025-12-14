@@ -159,7 +159,7 @@ describe('Imagemin Guard', () => {
     })
   })
 
-  test('Ignore parity: single file (non-staged vs staged)', async () => {
+  test('Ignore parity: single file (non-staged vs. staged)', async () => {
     // Prepare isolated temp directory
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-ignore-one-'))
     const tempTestFolder = path.join(tempDir, 'test')
@@ -169,6 +169,9 @@ describe('Imagemin Guard', () => {
     const entries = fs.readdirSync(tempTestFolder).filter(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
     if (entries.length === 0) return
     const target = entries[0]
+    const tempPath = path.join(tempTestFolder, target)
+    // Snapshot the temp copy before running the CLI to ensure equality checks reflect true non-mutation
+    const before = fs.statSync(tempPath)
 
     // Non-staged: Run with `--ignore=<file>`
     const originalCwd = process.cwd()
@@ -179,12 +182,10 @@ describe('Imagemin Guard', () => {
       process.chdir(originalCwd)
     }
 
-    // Verify the ignored file was not modified
-    const originalPath = path.join(testFolder, target)
-    const tempPath = path.join(tempTestFolder, target)
-    const origStats = fs.statSync(originalPath)
+    // Verify the ignored file was not modified (size and mtime unchanged vs. pre-run snapshot)
     const tempStats = fs.statSync(tempPath)
-    assert.strictEqual(tempStats.size >= origStats.size, true)
+    assert.strictEqual(tempStats.size, before.size)
+    assert.strictEqual(tempStats.mtime.getTime(), before.mtime.getTime())
 
     // Staged: Init repo, stage only target and another file, ensure ignore prevents its processing
     const git = simpleGit(tempTestFolder)
