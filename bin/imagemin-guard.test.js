@@ -218,6 +218,11 @@ describe('Imagemin Guard', () => {
 
     // Build ignore list: specific file and directory (case-insensitive path)
     const ignoreArg = `--ignore=test/${oneFile},test/assets/`
+    // Snapshot the file placed in ignored directory, before running the CLI
+    let preInside
+    if (oneFile) {
+      preInside = fs.statSync(path.join(subDir, oneFile))
+    }
 
     const originalCwd = process.cwd()
     try {
@@ -236,8 +241,8 @@ describe('Imagemin Guard', () => {
     if (oneFile) {
       const inside = fs.statSync(path.join(subDir, oneFile))
       const origInside = fs.statSync(path.join(tempTestFolder, oneFile))
-      // Since original may have been compressed, only assert that the inside file didn’t shrink vs. its own size pre-run
-      assert.strictEqual(inside.size, inside.size) // Tautology to keep structure simple if fixtures vary
+      // Since original may change, assert that the file inside ignored directory remained unchanged, by comparing to its own pre-run snapshot
+      assert.strictEqual(inside.size, preInside.size)
       assert.ok(origInside)
     }
 
