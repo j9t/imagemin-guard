@@ -10,6 +10,9 @@
     "simple-git": "^3.30.0"
   },
   "description": "Ensure losslessly compressed PNG, JPG, GIF, WebP, and AVIF images (suitable for manual and automatic compression)",
+	"devDependencies": {
+		"eslint": "^9.39.2"
+	},
   "homepage": "https://github.com/j9t/imagemin-guard",
   "keywords": [
     "automation",
@@ -32,6 +35,8 @@
     "url": "git+ssh://git@github.com/j9t/imagemin-guard.git"
   },
   "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "node --test bin/imagemin-guard.test.js"
   },
   "type": "module",
