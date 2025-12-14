@@ -1,7 +1,6 @@
 export default [
   {
     ignores: [
-    	'**/*.test.js',
     	'media/',
     	'node_modules/**'
 		]
@@ -14,8 +13,6 @@ export default [
         console: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
         global: 'readonly',
         setTimeout: 'readonly',
       }
