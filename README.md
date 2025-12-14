@@ -107,7 +107,7 @@ npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/
 
 * `--dry` allows you to run Imagemin Guard in “dry mode.” All changes are shown in the terminal.
 
-* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. (Files and paths specified in .gitignore files are generally ignored.)
+* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case‑insensitive and honors `.gitignore`.
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files in `git diff` and only compresses those files—that approach makes Imagemin Guard more efficient in operation.
 
