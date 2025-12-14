@@ -146,7 +146,7 @@ describe('Imagemin Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node "${imageminGuardScript}" --dry`)
+		execSync(`node "${imageminGuardScript}" --dry`, { cwd: testFolderGit, stdio: 'pipe' })
     const newStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
