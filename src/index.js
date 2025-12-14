@@ -82,7 +82,7 @@ export async function runImageminGuard() {
     try {
       sharp.concurrency(perTaskThreads)
     } catch {
-      // Best-effort; ignore if not supported
+			// Best-effort; ignore if not supported (could log in debug mode)
     }
 
     const limit = createLimiter(desiredFileConcurrency)
