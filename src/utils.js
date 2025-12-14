@@ -29,6 +29,8 @@ const retryFileOperation = async (operation, maxRetries = 5, delayMs = 100) => {
 const compression = async (filename, dry, quiet = false) => {
   const filenameBackup = `${filename}.bak`
   const fileSizeBefore = await size(filename)
+  // Track whether original file was successfully replaced
+  let replacementSucceeded = false
 
   if (fileSizeBefore === 0) {
     logMessage(`Skipped ${filename} (${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
@@ -47,6 +49,9 @@ const compression = async (filename, dry, quiet = false) => {
     path.dirname(filename),
     `.imagemin-guard-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`
   )
+
+  // Track whether the temporary file has been “consumed” (renamed into place or explicitly deleted after copy)
+  let tempConsumed = false
 
   try {
     const ext = path.extname(filename).slice(1).toLowerCase()
@@ -112,10 +117,16 @@ const compression = async (filename, dry, quiet = false) => {
         // Prefer atomic rename when possible
         try {
           await retryFileOperation(() => fs.promises.rename(tempFilePath, filename))
+          // Temp file was renamed (consumed)
+          tempConsumed = true
+          replacementSucceeded = true
         } catch {
           // Fallback to copy when rename across devices isn’t possible
           await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
           await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+          // Temp file explicitly removed after copy
+          tempConsumed = true
+          replacementSucceeded = true
         }
       }
     } else if (fileSizeAfter > fileSizeBefore) {
@@ -131,10 +142,13 @@ const compression = async (filename, dry, quiet = false) => {
       return 0
     }
 
-    try {
-      await retryFileOperation(() => fs.promises.unlink(tempFilePath))
-    } catch (e) {
-      if (e.code !== 'ENOENT') throw e
+    // Clean up temp file only when it wasn’t consumed
+    if (!tempConsumed) {
+      try {
+        await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+      } catch (e) {
+        if (e.code !== 'ENOENT') throw e
+      }
     }
 
     if (fileSizeAfter === 0) {
@@ -163,7 +177,7 @@ const compression = async (filename, dry, quiet = false) => {
   } finally {
 
     // If backup created (i.e., only in improvement path), try to remove it
-    if (!dry) {
+    if (!dry && replacementSucceeded) {
       try {
         await retryFileOperation(() => fs.promises.unlink(filenameBackup))
       } catch (error) {
