@@ -217,8 +217,8 @@ describe('Imagemin Guard', () => {
     const oneFile = fs.readdirSync(tempTestFolder).find(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
     if (oneFile) fs.copyFileSync(path.join(tempTestFolder, oneFile), path.join(subDir, oneFile))
 
-    // Build ignore list: specific file and directory (case-insensitive path)
-    const ignoreArg = `--ignore=test/${oneFile},test/assets/`
+    // Build ignore list: specific file (if available) and directory (case-insensitive path)
+    const ignoreArg = oneFile ? `--ignore=test/${oneFile},test/assets/` : `--ignore=test/assets/`
     // Snapshot the file placed in ignored directory, before running the CLI
     let preInside
     if (oneFile) {
@@ -233,10 +233,12 @@ describe('Imagemin Guard', () => {
       process.chdir(originalCwd)
     }
 
-    // Assert ignored file unchanged
-    const orig = fs.statSync(path.join(testFolder, oneFile))
-    const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
-    assert.strictEqual(ignoredCopy.size >= orig.size, true)
+    // Assert ignored file unchanged (only if there was a file to ignore explicitly)
+    if (oneFile) {
+      const orig = fs.statSync(path.join(testFolder, oneFile))
+      const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
+      assert.strictEqual(ignoredCopy.size >= orig.size, true)
+    }
 
     // Assert file inside ignored directory unchanged (if created)
     if (oneFile) {
