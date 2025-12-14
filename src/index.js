@@ -89,10 +89,28 @@ export async function runImageminGuard() {
     const limit = createLimiter(desiredFileConcurrency)
     const tasks = files.map(file => limit(() => utils.compression(file, dry, argv.quiet)))
     const results = await Promise.allSettled(tasks)
+
+    let hadFailures = false
     for (const r of results) {
-      if (r.status === 'fulfilled' && typeof r.value === 'number') {
-        savedKB += r.value
+      if (r.status === 'fulfilled') {
+        if (typeof r.value === 'number') {
+          savedKB += r.value
+        } else {
+          // Treat non-numeric fulfillment as a failure signal
+          hadFailures = true
+        }
+      } else {
+        hadFailures = true
+        // Log the underlying reason to aid troubleshooting
+        const reason = r.reason && r.reason.message ? r.reason.message : String(r.reason)
+        console.error(styleText('red', 'Compression task failed:'), reason)
       }
+    }
+
+    if (hadFailures) {
+      process.exitCode = 1
+      summary(false)
+      return
     }
 
     summary(true)
@@ -164,6 +182,9 @@ export async function runImageminGuard() {
       await compress(compressionFiles, argv.dry)
     } catch (err) {
       console.error(err)
+      // Ensure non-zero exit and failure summary on staged path errors
+      process.exitCode = 1
+      summary(false)
     }
   } else {
     files = await findFiles(patterns)
