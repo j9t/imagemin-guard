@@ -317,7 +317,7 @@ describe('Imagemin Guard', () => {
     // Summary should be present
     assert.match(stdout, /Defensive base compression completed\./)
     // Per-file lines like “Compressed <file>” or “Skipped <file>” should be suppressed
-    assert.strictEqual(/\bCompressed\b/.test(stdout) || /\bSkipped\b/.test(stdout), false)
+    assert.strictEqual(!(/Compressed|Skipped/.test(stdout)), true)
   })
 
   test('Dry and quiet runs leave no artifacts and do not mutate files', () => {
@@ -343,7 +343,7 @@ describe('Imagemin Guard', () => {
 
     // Summary present; no per-file lines
     assert.match(stdout, /There were no images to compress\.|Defensive base compression completed\./)
-    assert.strictEqual(/\bCompressed\b/.test(stdout) || /\bSkipped\b/.test(stdout), false)
+    assert.strictEqual(!(/Compressed|Skipped/.test(stdout)), true)
 
     // Verify no mutations
     const after = fs.readdirSync(tempTestFolder).sort().map(file => {
