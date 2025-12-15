@@ -49,7 +49,7 @@ function areImagesCompressed(dir, originalDir = testFolder) {
       }
       return isCompressed
     } catch (err) {
-      console.warn(`Skipping corrupt file: ${file}`)
+      console.warn(`Skipping possibly corrupt file: ${file} (${err.message})`)
       return true
     }
   })
@@ -142,12 +142,12 @@ describe('Imagemin Guard', () => {
   })
 
   test('Do not modify files in dry run', () => {
-    const originalStats = fs.readdirSync(testFolderGit).map(file => {
+    const originalStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node "${imageminGuardScript}" --dry`)
-    const newStats = fs.readdirSync(testFolderGit).map(file => {
+    execSync(`node "${imageminGuardScript}" --dry`, { cwd: testFolderGit, stdio: 'pipe' })
+    const newStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
@@ -157,5 +157,236 @@ describe('Imagemin Guard', () => {
       assert.strictEqual(newFile.stats.size, original.stats.size)
       assert.strictEqual(newFile.stats.mtime.getTime(), original.stats.mtime.getTime())
     })
+  })
+
+  test('Ignore parity: single file (non-staged vs. staged)', async () => {
+    // Prepare isolated temp directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-ignore-one-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Pick a known file from fixture folder
+    const entries = fs.readdirSync(tempTestFolder).filter(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
+    if (entries.length === 0) {
+      fs.rmSync(tempDir, { recursive: true, force: true })
+      return
+    }
+    const target = entries[0]
+    const tempPath = path.join(tempTestFolder, target)
+    // Snapshot the temp copy before running the CLI to ensure equality checks reflect true non-mutation
+    const before = fs.statSync(tempPath)
+
+    // Prepare a pre-run snapshot for non-ignored candidates to verify at least one gets compressed
+    const preSnapshot = new Map()
+    fs.readdirSync(tempTestFolder).sort().forEach(name => {
+      if (name === target) return // excluded: explicitly ignored
+      if (ignoreFiles.includes(name)) return // excluded: known corrupt fixture
+      const ext = path.extname(name).slice(1).toLowerCase()
+      if (!allowedFileTypes.includes(ext)) return
+      const p = path.join(tempTestFolder, name)
+      preSnapshot.set(name, fs.statSync(p))
+    })
+
+    // Non-staged: Run with `--ignore=<file>`
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageminGuardScript}" --ignore=${path.posix.join('test', target)}`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Verify the ignored file was not modified (size and mtime unchanged vs. pre-run snapshot)
+    const tempStats = fs.statSync(tempPath)
+    assert.strictEqual(tempStats.size, before.size)
+    assert.strictEqual(tempStats.mtime.getTime(), before.mtime.getTime())
+
+    // Verify at least one non-ignored candidate was compressed in the non-staged run
+    let shrunkCount = 0
+    for (const [name, statBefore] of preSnapshot) {
+      const statAfter = fs.statSync(path.join(tempTestFolder, name))
+      if (statAfter.size < statBefore.size) shrunkCount++
+    }
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
+
+    // Staged: Init repo, stage only target and another file, ensure ignore prevents its processing
+    const git = simpleGit(tempTestFolder)
+    await git.init()
+    await git.addConfig('user.name', 'Test User')
+    await git.addConfig('user.email', 'test@example.com')
+    await git.add('.')
+
+    // Run staged with `ignore`
+    execSync(`node "${imageminGuardScript}" --staged --ignore=${path.posix.join('test', target)}`, { cwd: tempTestFolder, stdio: 'pipe' })
+
+    // Check file still not modified compared to its current state (size should not shrink due to ignore)
+    const afterStats = fs.statSync(tempPath)
+    assert.strictEqual(afterStats.size, tempStats.size)
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('Ignore supports multiple patterns and directories; case-insensitive', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-ignore-multi-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Create a subdirectory to simulate directory ignore
+    const subDir = path.join(tempTestFolder, 'Assets')
+    fs.mkdirSync(subDir, { recursive: true })
+    // Copy one file into subdir
+    const oneFile = fs.readdirSync(tempTestFolder).find(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
+    if (oneFile) fs.copyFileSync(path.join(tempTestFolder, oneFile), path.join(subDir, oneFile))
+
+    // Build ignore list: specific file (if available) and directory (case-insensitive path)
+    const ignoreArg = oneFile ? `--ignore=test/${oneFile},test/assets/` : `--ignore=test/assets/`
+    // Snapshot the file placed in ignored directory, before running the CLI
+    let preInside
+    if (oneFile) {
+      preInside = fs.statSync(path.join(subDir, oneFile))
+    }
+
+    // Snapshot before running CLI for file-level ignore check
+    let preIgnored
+    if (oneFile) {
+      preIgnored = fs.statSync(path.join(tempTestFolder, oneFile))
+    }
+
+    // Build a pre-run snapshot of candidates that are not ignored
+    const preSnapshot = new Map()
+    fs.readdirSync(tempTestFolder).sort().forEach(name => {
+      // Exclude the explicitly ignored file (if any) and anything inside the ignored directory
+      if (oneFile && name === oneFile) return
+      if (ignoreFiles.includes(name)) return // exclude corrupt fixture
+      const ext = path.extname(name).slice(1).toLowerCase()
+      if (!allowedFileTypes.includes(ext)) return
+      const p = path.join(tempTestFolder, name)
+      preSnapshot.set(name, fs.statSync(p))
+    })
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageminGuardScript}" ${ignoreArg}`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Assert ignored file unchanged (only if there was a file to ignore explicitly)
+    if (oneFile) {
+      const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
+      assert.strictEqual(ignoredCopy.size, preIgnored.size)
+      assert.strictEqual(ignoredCopy.mtime.getTime(), preIgnored.mtime.getTime())
+    }
+
+    // Assert that at least one non-ignored file in the root `tempTestFolder` was compressed
+    let shrunkCount = 0
+    for (const [name, statBefore] of preSnapshot) {
+      const statAfter = fs.statSync(path.join(tempTestFolder, name))
+      if (statAfter.size < statBefore.size) shrunkCount++
+    }
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
+
+    // Assert file inside ignored directory unchanged (if created)
+    if (oneFile) {
+      const inside = fs.statSync(path.join(subDir, oneFile))
+      // Since original may change, assert that the file inside ignored directory remained unchanged, by comparing to its own pre-run snapshot
+      assert.strictEqual(inside.size, preInside.size)
+    }
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('Quiet mode suppresses per-file logs but keeps summary', () => {
+    // Prepare isolated temp directory with test images
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-quiet-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    let stdout = ''
+    try {
+      process.chdir(tempDir)
+      stdout = execSync(`node "${imageminGuardScript}" --quiet`, { encoding: 'utf8' })
+    } finally {
+      process.chdir(originalCwd)
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+
+    // Summary should be present
+    assert.match(stdout, /Defensive base compression completed\./)
+    // Per-file lines like “Compressed <file>” or “Skipped <file>” should be suppressed
+    assert.strictEqual(!(/Compressed|Skipped/.test(stdout)), true)
+  })
+
+  test('Dry and quiet runs leave no artifacts and do not mutate files', () => {
+    // Use isolated temp directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-dry-quiet-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Snapshot sizes/mtimes
+    const before = fs.readdirSync(tempTestFolder).sort().map(file => {
+      const filePath = path.join(tempTestFolder, file)
+      return { file, stats: fs.statSync(filePath) }
+    })
+
+    const originalCwd = process.cwd()
+    let stdout = ''
+    try {
+      process.chdir(tempDir)
+      stdout = execSync(`node "${imageminGuardScript}" --dry --quiet`, { encoding: 'utf8' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Summary present; no per-file lines
+    assert.match(stdout, /There were no images to compress\.|Defensive base compression completed\./)
+    assert.strictEqual(!(/Compressed|Skipped/.test(stdout)), true)
+
+    // Verify no mutations
+    const after = fs.readdirSync(tempTestFolder).sort().map(file => {
+      const filePath = path.join(tempTestFolder, file)
+      return { file, stats: fs.statSync(filePath) }
+    })
+    before.forEach((b, i) => {
+      const a = after[i]
+      assert.strictEqual(a.file, b.file)
+      assert.strictEqual(a.stats.size, b.stats.size)
+      assert.strictEqual(a.stats.mtime.getTime(), b.stats.mtime.getTime())
+    })
+
+    // Ensure no temp or backup artifacts present
+    const entries = fs.readdirSync(tempTestFolder)
+    const hasTemp = entries.some(name => name.startsWith('.imagemin-guard-'))
+    const hasBak = entries.some(name => name.endsWith('.bak'))
+    assert.strictEqual(hasTemp, false)
+    assert.strictEqual(hasBak, false)
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('No .bak files remain after normal compression', () => {
+    // Prepare isolated temp directory with test images
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-bak-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageminGuardScript}"`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    const entries = fs.readdirSync(tempTestFolder)
+    const hasBak = entries.some(name => name.endsWith('.bak'))
+    assert.strictEqual(hasBak, false)
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true })
   })
 })

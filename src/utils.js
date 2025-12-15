@@ -1,12 +1,12 @@
 // This file, which had been forked from imagemin-merlin, was modified for imagemin-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
 
 import fs from 'fs'
-import os from 'os'
 import path from 'path'
 import sharp from 'sharp'
 import { styleText } from 'node:util'
 
-const logMessage = (message, dry, color = 'yellow') => {
+const logMessage = (message, dry, color = 'yellow', quiet = false) => {
+  if (quiet) return
   const prefix = dry ? 'Dry run: ' : ''
   console.info(styleText(color, `${prefix}${message}`))
 }
@@ -16,42 +16,42 @@ const retryFileOperation = async (operation, maxRetries = 5, delayMs = 100) => {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation()
-    } catch (error) {
-      if ((error.code === 'EPERM' || error.code === 'UNKNOWN') && i < maxRetries - 1) {
+    } catch (err) {
+      if ((err.code === 'EPERM' || err.code === 'UNKNOWN') && i < maxRetries - 1) {
         await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)))
       } else {
-        throw error
+        throw err
       }
     }
   }
 }
 
-const compression = async (filename, dry) => {
+const compression = async (filename, dry, quiet = false) => {
   const filenameBackup = `${filename}.bak`
-  if (!dry) {
-    try {
-      await fs.promises.copyFile(filename, filenameBackup)
-    } catch (error) {
-      console.error(styleText('red', `Error creating backup for ${filename}:`), error)
-      return 0
-    }
-  }
-
   const fileSizeBefore = await size(filename)
+  // Track whether original file was successfully replaced
+  let replacementSucceeded = false
 
   if (fileSizeBefore === 0) {
-    logMessage(`Skipped ${filename} (${sizeReadable(fileSizeBefore)})`, dry)
+    logMessage(`Skipped ${filename} (${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
     return 0
   }
 
   const maxFileSize = 100 * 1024 * 1024 // 100 MB
 
   if (fileSizeBefore > maxFileSize) {
-    logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry)
+    logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
     return 0
   }
 
-  const tempFilePath = path.join(os.tmpdir(), `imagemin-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`)
+  // Place temp file next to the original to maximize same-device atomic rename
+  const tempFilePath = path.join(
+    path.dirname(filename),
+    `.imagemin-guard-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`
+  )
+
+  // Track whether the temporary file has been “consumed” (renamed into place or explicitly deleted after copy)
+  let tempConsumed = false
 
   try {
     const ext = path.extname(filename).slice(1).toLowerCase()
@@ -112,7 +112,22 @@ const compression = async (filename, dry) => {
       status = 'Compressed'
       details = `${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)}`
       if (!dry) {
-        await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
+        // Only now create a backup and replace the original
+        await retryFileOperation(() => fs.promises.copyFile(filename, filenameBackup))
+        // Prefer atomic rename when possible
+        try {
+          await retryFileOperation(() => fs.promises.rename(tempFilePath, filename))
+          // Temp file was renamed (consumed)
+          tempConsumed = true
+          replacementSucceeded = true
+        } catch {
+          // Fallback to copy when rename across devices isn’t possible
+          await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
+          await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+          // Temp file explicitly removed after copy
+          tempConsumed = true
+          replacementSucceeded = true
+        }
       }
     } else if (fileSizeAfter > fileSizeBefore) {
       color = 'blue'
@@ -120,14 +135,21 @@ const compression = async (filename, dry) => {
       details = 'already compressed more aggressively'
     }
 
-    logMessage(`${status} ${filename} (${details})`, dry, color)
+    logMessage(`${status} ${filename} (${details})`, dry, color, quiet)
 
     if (dry) {
       await retryFileOperation(() => fs.promises.unlink(tempFilePath))
       return 0
     }
 
-    await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+    // Clean up temp file only when it wasn’t consumed
+    if (!tempConsumed) {
+      try {
+        await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw err
+      }
+    }
 
     if (fileSizeAfter === 0) {
       console.error(styleText('red', `Error compressing ${filename}: Compressed file size is 0`))
@@ -135,38 +157,36 @@ const compression = async (filename, dry) => {
 
     return fileSizeAfter < fileSizeBefore ? fileSizeBefore - fileSizeAfter : 0
 
-  } catch (error) {
+  } catch (err) {
 
     // Check if this is a file corruption error
-    if (error.message && (
-      error.message.includes('corrupt header') ||
-      error.message.includes('Unexpected end of') ||
-      error.message.includes('Invalid') ||
-      error.message.includes('gifload:') ||
-      error.message.includes('pngload:') ||
-      error.message.includes('jpegload:')
+    if (err.message && (
+      err.message.includes('corrupt header') ||
+      err.message.includes('Unexpected end of') ||
+      err.message.includes('Invalid') ||
+      err.message.includes('gifload:') ||
+      err.message.includes('pngload:') ||
+      err.message.includes('jpegload:')
     )) {
-      logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow')
+      logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow', quiet)
     } else {
-      console.error(styleText('red', `Error compressing ${filename}:`), error)
-    }
-
-    if (!dry) {
-      await retryFileOperation(() => fs.promises.rename(filenameBackup, filename))
+      console.error(styleText('red', `Error compressing ${filename}:`), err)
     }
     return 0
 
   } finally {
 
-    if (!dry) {
+    // If backup created (i.e., only in improvement path), try to remove it
+    if (!dry && replacementSucceeded) {
       try {
         await retryFileOperation(() => fs.promises.unlink(filenameBackup))
-      } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), error)
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), err)
         }
       }
     }
+
   }
 }
 
