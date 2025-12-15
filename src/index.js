@@ -1,6 +1,6 @@
 // This file, which had been forked from imagemin-merlin, was modified for imagemin-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
 
-import { globby } from 'globby'
+import { globby, convertPathToPattern } from 'globby'
 import simpleGit from 'simple-git'
 import { parseArgs, styleText } from 'node:util'
 import os from 'node:os'
@@ -169,7 +169,8 @@ export async function runImageminGuard() {
       if (ignoreList.length > 0) {
         // Use globby to filter the staged list with identical options; avoid repo-wide scan
         // Pass the staged file paths as include patterns and the ignores as negatives
-        const filtered = await globby([...byExt, ...ignoreList], {
+        const escapedPaths = byExt.map(p => convertPathToPattern(p))
+        const filtered = await globby([...escapedPaths, ...ignoreList], {
           gitignore: true,
           expandDirectories: false,
           onlyFiles: true,
