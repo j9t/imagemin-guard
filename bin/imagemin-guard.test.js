@@ -176,6 +176,17 @@ describe('Imagemin Guard', () => {
     // Snapshot the temp copy before running the CLI to ensure equality checks reflect true non-mutation
     const before = fs.statSync(tempPath)
 
+    // Prepare a pre-run snapshot for non-ignored candidates to verify at least one gets compressed
+    const preSnapshot = new Map()
+    fs.readdirSync(tempTestFolder).sort().forEach(name => {
+      if (name === target) return // excluded: explicitly ignored
+      if (ignoreFiles.includes(name)) return // excluded: known corrupt fixture
+      const ext = path.extname(name).slice(1).toLowerCase()
+      if (!allowedFileTypes.includes(ext)) return
+      const p = path.join(tempTestFolder, name)
+      preSnapshot.set(name, fs.statSync(p))
+    })
+
     // Non-staged: Run with `--ignore=<file>`
     const originalCwd = process.cwd()
     try {
@@ -189,6 +200,14 @@ describe('Imagemin Guard', () => {
     const tempStats = fs.statSync(tempPath)
     assert.strictEqual(tempStats.size, before.size)
     assert.strictEqual(tempStats.mtime.getTime(), before.mtime.getTime())
+
+    // Verify at least one non-ignored candidate was compressed in the non-staged run
+    let shrunkCount = 0
+    for (const [name, statBefore] of preSnapshot) {
+      const statAfter = fs.statSync(path.join(tempTestFolder, name))
+      if (statAfter.size < statBefore.size) shrunkCount++
+    }
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
 
     // Staged: Init repo, stage only target and another file, ensure ignore prevents its processing
     const git = simpleGit(tempTestFolder)
@@ -234,6 +253,18 @@ describe('Imagemin Guard', () => {
       preIgnored = fs.statSync(path.join(tempTestFolder, oneFile))
     }
 
+    // Build a pre-run snapshot of candidates that are not ignored
+    const preSnapshot = new Map()
+    fs.readdirSync(tempTestFolder).sort().forEach(name => {
+      // Exclude the explicitly ignored file (if any) and anything inside the ignored directory
+      if (oneFile && name === oneFile) return
+      if (ignoreFiles.includes(name)) return // exclude corrupt fixture
+      const ext = path.extname(name).slice(1).toLowerCase()
+      if (!allowedFileTypes.includes(ext)) return
+      const p = path.join(tempTestFolder, name)
+      preSnapshot.set(name, fs.statSync(p))
+    })
+
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
@@ -248,6 +279,14 @@ describe('Imagemin Guard', () => {
       assert.strictEqual(ignoredCopy.size, preIgnored.size)
       assert.strictEqual(ignoredCopy.mtime.getTime(), preIgnored.mtime.getTime())
     }
+
+    // Assert that at least one non-ignored file in the root `tempTestFolder` was compressed
+    let shrunkCount = 0
+    for (const [name, statBefore] of preSnapshot) {
+      const statAfter = fs.statSync(path.join(tempTestFolder, name))
+      if (statAfter.size < statBefore.size) shrunkCount++
+    }
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
 
     // Assert file inside ignored directory unchanged (if created)
     if (oneFile) {
