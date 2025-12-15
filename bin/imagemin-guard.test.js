@@ -48,8 +48,8 @@ function areImagesCompressed(dir, originalDir = testFolder) {
         uncompressedFiles.push(file)
       }
       return isCompressed
-    } catch {
-      console.warn(`Skipping corrupt file: ${file}`)
+    } catch (err) {
+      console.warn(`Skipping possibly corrupt file: ${file} (${err.message})`)
       return true
     }
   })
@@ -167,7 +167,10 @@ describe('Imagemin Guard', () => {
 
     // Pick a known file from fixture folder
     const entries = fs.readdirSync(tempTestFolder).filter(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
-    if (entries.length === 0) return
+    if (entries.length === 0) {
+      fs.rmSync(tempDir, { recursive: true, force: true })
+      return
+    }
     const target = entries[0]
     const tempPath = path.join(tempTestFolder, target)
     // Snapshot the temp copy before running the CLI to ensure equality checks reflect true non-mutation
