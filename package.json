@@ -13,6 +13,7 @@
   "devDependencies": {
     "eslint": "^9.39.2"
   },
+  "funding": "https://buymeacoffee.com/meiert",
   "homepage": "https://github.com/j9t/imagemin-guard",
   "keywords": [
     "automation",
@@ -32,7 +33,7 @@
   "name": "@j9t/imagemin-guard",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/j9t/imagemin-guard.git"
+    "url": "git+https://github.com/j9t/imagemin-guard.git"
   },
   "scripts": {
     "lint": "eslint .",
