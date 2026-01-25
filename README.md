@@ -168,7 +168,6 @@ Feedback is appreciated: Please [file an issue](https://github.com/j9t/imagemin-
 ## License
 
 Copyright 2019 [sum.cumo GmbH](https://web.archive.org/web/20191208211414/https://www.sumcumo.com/)
-
 Copyright 2022 [Jens Oliver Meiert](https://meiert.com/)
 
 Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License. You may obtain a copy of the License at
