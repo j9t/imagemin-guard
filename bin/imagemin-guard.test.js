@@ -69,7 +69,7 @@ function areImagesAlreadyCompressed(dir) {
   })
 }
 
-describe('Imagemin Guard', () => {
+describe('Image Guard', () => {
   before(() => {
     // Back up original images
     copyFiles(testFolder, testFolderGit)

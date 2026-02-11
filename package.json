@@ -13,8 +13,8 @@
   "devDependencies": {
     "eslint": "^9.39.2"
   },
-  "funding": "https://github.com/j9t/imagemin-guard?sponsor=1",
-  "homepage": "https://github.com/j9t/imagemin-guard",
+  "funding": "https://github.com/j9t/image-guard?sponsor=1",
+  "homepage": "https://github.com/j9t/image-guard",
   "keywords": [
     "automation",
     "avif",
@@ -31,10 +31,10 @@
     "webp"
   ],
   "license": "Apache-2.0",
-  "name": "@j9t/imagemin-guard",
+  "name": "image-guard",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/j9t/imagemin-guard.git"
+    "url": "git+https://github.com/j9t/image-guard.git"
   },
   "scripts": {
     "lint": "eslint .",
