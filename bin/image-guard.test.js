@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const testFolder = path.join(__dirname, '../media/test')
 const testFolderGit = path.join(__dirname, '../media/test-git')
-const imageminGuardScript = path.join(__dirname, '../bin/imagemin-guard.js')
+const imageGuardScript = path.join(__dirname, '../bin/image-guard.js')
 
 // Function to copy files
 function copyFiles(srcDir, destDir) {
@@ -87,17 +87,17 @@ describe('Image Guard', () => {
     assert.strictEqual(areImagesAlreadyCompressed(testFolderGit), true)
 
     // Run the script in a completely isolated temporary directory
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-test-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-test-'))
     const tempTestFolder = path.join(tempDir, 'test')
 
     // Copy test files to isolated temp directory
     copyFiles(testFolder, tempTestFolder)
 
-    // Run imagemin-guard from temp directory—only files in “tempDir” will be processed
+    // Run image-guard from temp directory—only files in “tempDir” will be processed
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageminGuardScript}"`)
+      execSync(`node "${imageGuardScript}"`)
     } finally {
       process.chdir(originalCwd)
     }
@@ -130,8 +130,8 @@ describe('Image Guard', () => {
     // Stage files
     await git.add('.')
 
-    // Run imagemin-guard script with “--staged” option
-    execSync(`node "${imageminGuardScript}" --staged`, { cwd: testFolderGit })
+    // Run image-guard script with “--staged” option
+    execSync(`node "${imageGuardScript}" --staged`, { cwd: testFolderGit })
 
     // Verify images are compressed
     const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
@@ -146,7 +146,7 @@ describe('Image Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node "${imageminGuardScript}" --dry`, { cwd: testFolderGit, stdio: 'pipe' })
+    execSync(`node "${imageGuardScript}" --dry`, { cwd: testFolderGit, stdio: 'pipe' })
     const newStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
@@ -161,7 +161,7 @@ describe('Image Guard', () => {
 
   test('Ignore parity: single file (non-staged vs. staged)', async () => {
     // Prepare isolated temp directory
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-ignore-one-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-ignore-one-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
@@ -191,7 +191,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageminGuardScript}" --ignore=${path.posix.join('test', target)}`, { stdio: 'pipe' })
+      execSync(`node "${imageGuardScript}" --ignore=${path.posix.join('test', target)}`, { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -217,7 +217,7 @@ describe('Image Guard', () => {
     await git.add('.')
 
     // Run staged with `ignore`
-    execSync(`node "${imageminGuardScript}" --staged --ignore=${path.posix.join('test', target)}`, { cwd: tempTestFolder, stdio: 'pipe' })
+    execSync(`node "${imageGuardScript}" --staged --ignore=${path.posix.join('test', target)}`, { cwd: tempTestFolder, stdio: 'pipe' })
 
     // Check file still not modified compared to its current state (size should not shrink due to ignore)
     const afterStats = fs.statSync(tempPath)
@@ -228,7 +228,7 @@ describe('Image Guard', () => {
   })
 
   test('Ignore supports multiple patterns and directories; case-insensitive', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-ignore-multi-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-ignore-multi-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
@@ -268,7 +268,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageminGuardScript}" ${ignoreArg}`, { stdio: 'pipe' })
+      execSync(`node "${imageGuardScript}" ${ignoreArg}`, { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -300,7 +300,7 @@ describe('Image Guard', () => {
 
   test('Quiet mode suppresses per-file logs but keeps summary', () => {
     // Prepare isolated temp directory with test images
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-quiet-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-quiet-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
@@ -308,7 +308,7 @@ describe('Image Guard', () => {
     let stdout = ''
     try {
       process.chdir(tempDir)
-      stdout = execSync(`node "${imageminGuardScript}" --quiet`, { encoding: 'utf8' })
+      stdout = execSync(`node "${imageGuardScript}" --quiet`, { encoding: 'utf8' })
     } finally {
       process.chdir(originalCwd)
       fs.rmSync(tempDir, { recursive: true, force: true })
@@ -322,7 +322,7 @@ describe('Image Guard', () => {
 
   test('Dry and quiet runs leave no artifacts and do not mutate files', () => {
     // Use isolated temp directory
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-dry-quiet-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-dry-quiet-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
@@ -336,7 +336,7 @@ describe('Image Guard', () => {
     let stdout = ''
     try {
       process.chdir(tempDir)
-      stdout = execSync(`node "${imageminGuardScript}" --dry --quiet`, { encoding: 'utf8' })
+      stdout = execSync(`node "${imageGuardScript}" --dry --quiet`, { encoding: 'utf8' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -359,7 +359,7 @@ describe('Image Guard', () => {
 
     // Ensure no temp or backup artifacts present
     const entries = fs.readdirSync(tempTestFolder)
-    const hasTemp = entries.some(name => name.startsWith('.imagemin-guard-'))
+    const hasTemp = entries.some(name => name.startsWith('.image-guard-'))
     const hasBak = entries.some(name => name.endsWith('.bak'))
     assert.strictEqual(hasTemp, false)
     assert.strictEqual(hasBak, false)
@@ -370,14 +370,14 @@ describe('Image Guard', () => {
 
   test('No .bak files remain after normal compression', () => {
     // Prepare isolated temp directory with test images
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'imagemin-bak-'))
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-bak-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageminGuardScript}"`, { stdio: 'pipe' })
+      execSync(`node "${imageGuardScript}"`, { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }

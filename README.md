@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/image-guard.svg)](https://www.npmjs.com/package/image-guard) [![Build status](https://github.com/j9t/image-guard/workflows/Tests/badge.svg)](https://github.com/j9t/image-guard/actions) [![Socket](https://badge.socket.dev/npm/package/image-guard)](https://socket.dev/npm/package/image-guard)
 
-(This project was based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Image Guard supports two additional file formats—WebP and AVIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/imagemin-guard-4/) anymore.)
+(This project was based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Image Guard supports two additional file formats—WebP and AVIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/image-guard-4/) anymore.)
 
 Image Guard takes care of near-lossless compression of your images, to help you avoid bloat in your repositories. It makes it convenient and as safe as possible to automatically compress PNG, JPG, GIF, WebP, and AVIF images.
 
@@ -35,7 +35,7 @@ npm i -D image-guard
 Run Image Guard by calling
 
 ```console
-npx imagemin-guard
+npx image-guard
 ```
 
 To make sure that _all_ images are being compressed, it’s recommended to run Image Guard like this at least once, after installation.
@@ -51,7 +51,7 @@ npm i -D image-guard
 To compress images already in the code base, run Image Guard once by calling
 
 ```console
-npx imagemin-guard
+npx image-guard
 ```
 
 For automated use, Image Guard should be triggered through a [Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) on `pre-commit`. You can choose between native Git hooks (recommended for simple projects) or [Husky](https://github.com/typicode/husky).
@@ -64,7 +64,7 @@ Native Git hooks are simpler to set up and don’t require additional dependenci
 mkdir -p .githooks;\
 cat > .githooks/pre-commit << 'EOF'
 #!/bin/sh
-npx imagemin-guard --staged
+npx image-guard --staged
 EOF
 chmod +x .githooks/pre-commit;\
 git config core.hooksPath .githooks;\
@@ -72,7 +72,7 @@ git add .githooks/pre-commit;\
 git commit -m "feat: add Git pre-commit hook for Image Guard";\
 npm pkg set scripts.postprepare="mkdir -p .githooks && cat > .githooks/pre-commit << 'EOF'
 #\!/bin/sh
-npx imagemin-guard --staged
+npx image-guard --staged
 EOF
 chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 ```
@@ -82,10 +82,10 @@ chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 If you already use [Husky](https://typicode.github.io/husky/), run the following commands in your project root (you can copy and execute them at once):
 
 ```console
-grep -qxF "npx imagemin-guard --staged" .husky/pre-commit || echo "\nnpx imagemin-guard --staged" >> .husky/pre-commit;\
+grep -qxF "npx image-guard --staged" .husky/pre-commit || echo "\nnpx image-guard --staged" >> .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/pre-commit || echo '\nnpx imagemin-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre-commit || echo '\nnpx image-guard --staged' >> .husky/pre-commit"
 ```
 
 If you don’t use Husky yet, run the following commands from your project root:
@@ -93,10 +93,10 @@ If you don’t use Husky yet, run the following commands from your project root:
 ```console
 npm i -D husky;\
 npx husky init;\
-echo "npx imagemin-guard --staged" > .husky/pre-commit;\
+echo "npx image-guard --staged" > .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF 'npx imagemin-guard --staged' .husky/pre-commit || echo '\nnpx imagemin-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre-commit || echo '\nnpx image-guard --staged' >> .husky/pre-commit"
 ```
 
 (The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
@@ -122,7 +122,7 @@ If Git hooks fail with “npx: command not found,” make sure to install (`npm 
 ```console
 #!/bin/sh
 export PATH="$PWD/node_modules/.bin:$PATH"
-./node_modules/.bin/imagemin-guard --staged
+./node_modules/.bin/image-guard --staged
 ```
 
 This issue can arise in GUI Git clients (VS Code, GitHub Desktop, etc.) or with Node version managers, as these environments may not inherit your shell's `PATH`/Node environment. This affects any tool using npx in hooks.

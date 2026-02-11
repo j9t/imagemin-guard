@@ -1,4 +1,4 @@
-// This file, which had been forked from imagemin-merlin, was modified for imagemin-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
+// This file, which had been forked from imagemin-merlin, was modified for image-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
 
 import fs from 'fs'
 import path from 'path'
@@ -47,7 +47,7 @@ const compression = async (filename, dry, quiet = false) => {
   // Place temp file next to the original to maximize same-device atomic rename
   const tempFilePath = path.join(
     path.dirname(filename),
-    `.imagemin-guard-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`
+    `.image-guard-${Date.now()}-${Math.random().toString(36).slice(2)}-${path.basename(filename)}`
   )
 
   // Track whether the temporary file has been “consumed” (renamed into place or explicitly deleted after copy)
