@@ -1,8 +1,9 @@
 {
   "author": "Jens Oliver Meiert",
   "bin": {
-    "imagemin-guard": "bin/imagemin-guard.js",
-    "imagemin-merlin": "bin/imagemin-guard.js"
+    "image-guard": "bin/image-guard.js",
+    "imagemin-guard": "bin/image-guard.js",
+    "imagemin-merlin": "bin/image-guard.js"
   },
   "dependencies": {
     "globby": "^16.1.0",
@@ -39,8 +40,8 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node --test bin/imagemin-guard.test.js"
+    "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.1.0"
+  "version": "5.1.1"
 }
