@@ -10,7 +10,7 @@
     "sharp": "^0.34.5",
     "simple-git": "^3.30.0"
   },
-  "description": "Ensure losslessly compressed PNG, JPG, GIF, WebP, and AVIF images (suitable for manual and automatic compression).",
+  "description": "Near-lossless image compressor that’s easy to use and easy to automate",
   "devDependencies": {
     "eslint": "^9.39.2"
   },
@@ -43,5 +43,5 @@
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.1.1"
+  "version": "5.1.2"
 }
