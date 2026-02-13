@@ -12,7 +12,7 @@
   },
   "description": "Near-lossless image compressor that’s easy to use and easy to automate",
   "devDependencies": {
-    "eslint": "^9.39.2"
+    "eslint": "^10.0.0"
   },
   "funding": "https://github.com/j9t/image-guard?sponsor=1",
   "homepage": "https://github.com/j9t/image-guard",
