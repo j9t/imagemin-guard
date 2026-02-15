@@ -48,7 +48,7 @@ Install Image Guard in your project:
 npm i -D image-guard
 ```
 
-To compress images already in the code base, run Image Guard once by calling
+To compress images already in the codebase, run Image Guard once by calling
 
 ```console
 npx image-guard
