@@ -389,4 +389,108 @@ describe('Image Guard', () => {
     // Cleanup
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
+
+  test('Convert HEIC to AVIF with `--heic-to-avif`', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Ensure HEIC test fixture exists
+    const heicFile = path.join(tempTestFolder, 'test.heic')
+    assert.strictEqual(fs.existsSync(heicFile), true, 'HEIC test fixture must exist')
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageGuardScript}" --heic-to-avif`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // AVIF should be created
+    const avifFile = path.join(tempTestFolder, 'test.avif')
+    assert.strictEqual(fs.existsSync(avifFile), true, 'AVIF file should be created')
+    assert.ok(fs.statSync(avifFile).size > 0, 'AVIF file should not be empty')
+
+    // Original HEIC should be deleted
+    assert.strictEqual(fs.existsSync(heicFile), false, 'Original HEIC should be deleted')
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('`--keep-heic` preserves original HEIC file', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-keep-heic-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const heicFile = path.join(tempTestFolder, 'test.heic')
+    assert.strictEqual(fs.existsSync(heicFile), true, 'HEIC test fixture must exist')
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageGuardScript}" --heic-to-avif --keep-heic`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // Both files should exist
+    assert.strictEqual(fs.existsSync(path.join(tempTestFolder, 'test.avif')), true, 'AVIF file should be created')
+    assert.strictEqual(fs.existsSync(heicFile), true, 'HEIC file should be preserved with `--keep-heic`')
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('Dry run does not convert HEIC files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-dry-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const heicFile = path.join(tempTestFolder, 'test.heic')
+    const heicBefore = fs.statSync(heicFile)
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageGuardScript}" --heic-to-avif --dry`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // HEIC should be unchanged
+    const heicAfter = fs.statSync(heicFile)
+    assert.strictEqual(heicAfter.size, heicBefore.size)
+    assert.strictEqual(heicAfter.mtime.getTime(), heicBefore.mtime.getTime())
+
+    // No AVIF should be created from conversion (original test.avif from fixtures is fine)
+    // But we need to check that no new .avif was created from the HEIC
+    // The test.avif already exists from fixtures, so just verify the HEIC wasn’t touched
+    assert.strictEqual(fs.existsSync(heicFile), true)
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('HEIC files are ignored without `--heic-to-avif` flag', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-noflag-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const heicFile = path.join(tempTestFolder, 'test.heic')
+    const heicBefore = fs.statSync(heicFile)
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(tempDir)
+      execSync(`node "${imageGuardScript}"`, { stdio: 'pipe' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    // HEIC should be untouched
+    const heicAfter = fs.statSync(heicFile)
+    assert.strictEqual(heicAfter.size, heicBefore.size)
+    assert.strictEqual(heicAfter.mtime.getTime(), heicBefore.mtime.getTime())
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
 })
