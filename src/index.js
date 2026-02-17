@@ -83,16 +83,14 @@ export async function runImageGuard() {
     })
   }
 
-  const setupSharpConcurrency = () => {
-    const desiredFileConcurrency = Math.min(os.cpus().length, 4)
-    const perTaskThreads = Math.max(1, Math.floor(os.cpus().length / Math.max(1, desiredFileConcurrency)))
-    try {
-      sharp.concurrency(perTaskThreads)
-    } catch {
-      // Best-effort; ignore if not supported
-    }
-    return desiredFileConcurrency
+  const desiredFileConcurrency = Math.min(os.cpus().length, 4)
+  const perTaskThreads = Math.max(1, Math.floor(os.cpus().length / Math.max(1, desiredFileConcurrency)))
+  try {
+    sharp.concurrency(perTaskThreads)
+  } catch {
+    // Best-effort; ignore if not supported
   }
+  const limit = createLimiter(desiredFileConcurrency)
 
   const processResults = (results) => {
     let hadFailures = false
@@ -115,8 +113,6 @@ export async function runImageGuard() {
   const compress = async (files, dry) => {
     if (files.length === 0) return false
 
-    const concurrency = setupSharpConcurrency()
-    const limit = createLimiter(concurrency)
     const tasks = files.map(file => limit(() => utils.compression(file, dry, argv.quiet)))
     const results = await Promise.allSettled(tasks)
 
@@ -126,8 +122,6 @@ export async function runImageGuard() {
   const convert = async (files, dry, keepOriginal) => {
     if (files.length === 0) return false
 
-    const concurrency = setupSharpConcurrency()
-    const limit = createLimiter(concurrency)
     const tasks = files.map(file => limit(() => utils.conversion(file, dry, keepOriginal, argv.quiet)))
     const results = await Promise.allSettled(tasks)
 
@@ -224,7 +218,12 @@ export async function runImageGuard() {
 
   if (hadFailures) {
     process.exitCode = 1
-    summary(false, doConversion)
+    if (totalFiles > 0 && savedKB > 0) {
+      const action = doConversion ? 'compression and conversion' : 'compression'
+      console.info(styleText(['bold'], `\nDefensive base ${action} partially completed (some tasks failed). You saved ${utils.sizeReadable(savedKB)}.`))
+    } else {
+      summary(false, doConversion)
+    }
   } else if (totalFiles > 0) {
     summary(true, doConversion)
   } else {

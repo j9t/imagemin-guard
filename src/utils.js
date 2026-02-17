@@ -206,10 +206,15 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     return 0
   }
 
+  if (!/\.hei[cf]$/i.test(filename)) {
+    logMessage(`Skipped ${filename} (not a HEIC/HEIF file)`, dry, 'yellow', quiet)
+    return 0
+  }
+
   const avifPath = filename.replace(/\.hei[cf]$/i, '.avif')
 
   try {
-    // Decode HEIC to raw pixel data
+    // Decode HEIC/HEIF to raw pixel data
     const inputBuffer = await fs.promises.readFile(filename)
     const { width, height, data } = await decode({ buffer: inputBuffer })
 
@@ -218,8 +223,8 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
       return 0
     }
 
-    // Encode as lossless AVIF
-    await sharp(new Uint8Array(data.buffer), { raw: { width, height, channels: 4 } })
+    // Encode as lossless AVIF (pass the decoded view directly to avoid extra-byte issues)
+    await sharp(data, { raw: { width, height, channels: 4 } })
       .toFormat('avif', { effort: 5, lossless: true })
       .toFile(avifPath)
 
@@ -227,23 +232,32 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
 
     logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
 
-    // Delete original HEIC file unless --keep-heic is set
+    // Compress the resulting AVIF through the standard compression pipeline
+    const saved = await compression(avifPath, dry, quiet)
+
+    // Delete original HEIC/HEIF file unless --keep-heic is set (deferred until after compression succeeds)
     if (!keepOriginal) {
       await retryFileOperation(() => fs.promises.unlink(filename))
     }
-
-    // Compress the resulting AVIF through the standard compression pipeline
-    const saved = await compression(avifPath, dry, quiet)
 
     // Return compression savings only (conversion size change is informational)
     return saved
 
   } catch (err) {
+    // Clean up partial AVIF if it was created
+    try {
+      await fs.promises.unlink(avifPath)
+    } catch (cleanupErr) {
+      if (cleanupErr.code !== 'ENOENT') {
+        console.warn(styleText('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
+      }
+    }
+
     if (err.message && (
       err.message.includes('Invalid') ||
       err.message.includes('not a HEIF')
     )) {
-      logMessage(`Skipped ${filename} (corrupt or unsupported HEIC file)`, dry, 'yellow', quiet)
+      logMessage(`Skipped ${filename} (corrupt or unsupported HEIC/HEIF file)`, dry, 'yellow', quiet)
     } else {
       console.error(styleText('red', `Error converting ${filename}:`), err)
     }

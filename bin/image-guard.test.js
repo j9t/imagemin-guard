@@ -448,6 +448,7 @@ describe('Image Guard', () => {
 
     const heicFile = path.join(tempTestFolder, 'test.heic')
     const heicBefore = fs.statSync(heicFile)
+    const filesBefore = fs.readdirSync(tempTestFolder).sort()
 
     const originalCwd = process.cwd()
     try {
@@ -462,10 +463,9 @@ describe('Image Guard', () => {
     assert.strictEqual(heicAfter.size, heicBefore.size)
     assert.strictEqual(heicAfter.mtime.getTime(), heicBefore.mtime.getTime())
 
-    // No AVIF should be created from conversion (original test.avif from fixtures is fine)
-    // But we need to check that no new .avif was created from the HEIC
-    // The test.avif already exists from fixtures, so just verify the HEIC wasn’t touched
-    assert.strictEqual(fs.existsSync(heicFile), true)
+    // No files should be added or removed
+    const filesAfter = fs.readdirSync(tempTestFolder).sort()
+    assert.deepStrictEqual(filesAfter, filesBefore)
 
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
