@@ -94,10 +94,11 @@ export async function runImageGuard() {
 
   const processResults = (results) => {
     let hadFailures = false
+    let addedKB = 0
     for (const r of results) {
       if (r.status === 'fulfilled') {
         if (typeof r.value === 'number') {
-          savedKB += r.value
+          addedKB += r.value
         } else {
           hadFailures = true
         }
@@ -107,7 +108,7 @@ export async function runImageGuard() {
         console.error(styleText('red', 'Task failed:'), reason)
       }
     }
-    return hadFailures
+    return { hadFailures, addedKB }
   }
 
   const compress = async (files, dry) => {
@@ -116,7 +117,9 @@ export async function runImageGuard() {
     const tasks = files.map(file => limit(() => utils.compression(file, dry, argv.quiet)))
     const results = await Promise.allSettled(tasks)
 
-    return processResults(results)
+    const { hadFailures, addedKB } = processResults(results)
+    savedKB += addedKB
+    return hadFailures
   }
 
   const convert = async (files, dry, keepOriginal) => {
@@ -125,7 +128,9 @@ export async function runImageGuard() {
     const tasks = files.map(file => limit(() => utils.conversion(file, dry, keepOriginal, argv.quiet)))
     const results = await Promise.allSettled(tasks)
 
-    return processResults(results)
+    const { hadFailures, addedKB } = processResults(results)
+    savedKB += addedKB
+    return hadFailures
   }
 
   const getIgnorePatterns = (ignore) => {
