@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
 import { styleText } from 'node:util'
+import decode from 'heic-decode'
 
 const logMessage = (message, dry, color = 'yellow', quiet = false) => {
   if (quiet) return
@@ -190,6 +191,66 @@ const compression = async (filename, dry, quiet = false) => {
   }
 }
 
+const conversion = async (filename, dry, keepOriginal, quiet = false) => {
+  const fileSizeBefore = await size(filename)
+
+  if (fileSizeBefore === 0) {
+    logMessage(`Skipped ${filename} (${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
+    return 0
+  }
+
+  const maxFileSize = 100 * 1024 * 1024 // 100 MB
+
+  if (fileSizeBefore > maxFileSize) {
+    logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
+    return 0
+  }
+
+  const avifPath = filename.replace(/\.hei[cf]$/i, '.avif')
+
+  try {
+    // Decode HEIC to raw pixel data
+    const inputBuffer = await fs.promises.readFile(filename)
+    const { width, height, data } = await decode({ buffer: inputBuffer })
+
+    if (dry) {
+      logMessage(`Converted ${filename} → ${path.basename(avifPath)}`, dry, 'cyan', quiet)
+      return 0
+    }
+
+    // Encode as lossless AVIF
+    await sharp(new Uint8Array(data.buffer), { raw: { width, height, channels: 4 } })
+      .toFormat('avif', { effort: 5, lossless: true })
+      .toFile(avifPath)
+
+    const fileSizeAfter = await size(avifPath)
+
+    logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
+
+    // Delete original HEIC file unless --keep-heic is set
+    if (!keepOriginal) {
+      await retryFileOperation(() => fs.promises.unlink(filename))
+    }
+
+    // Compress the resulting AVIF through the standard compression pipeline
+    const saved = await compression(avifPath, dry, quiet)
+
+    // Return compression savings only (conversion size change is informational)
+    return saved
+
+  } catch (err) {
+    if (err.message && (
+      err.message.includes('Invalid') ||
+      err.message.includes('not a HEIF')
+    )) {
+      logMessage(`Skipped ${filename} (corrupt or unsupported HEIC file)`, dry, 'yellow', quiet)
+    } else {
+      console.error(styleText('red', `Error converting ${filename}:`), err)
+    }
+    return 0
+  }
+}
+
 const size = async (file) => {
   const stats = await fs.promises.stat(file)
   return stats.size
@@ -197,4 +258,4 @@ const size = async (file) => {
 
 const sizeReadable = (size) => `${(size / 1024).toFixed(2)} KB`
 
-export const utils = { compression, sizeReadable }
+export const utils = { compression, conversion, sizeReadable }

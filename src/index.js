@@ -11,26 +11,34 @@ import { utils } from './utils.js'
 // Files to be compressed
 export const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp'];
 
+// Files to be converted (require explicit opt-in)
+export const convertTypes = ['heic', 'heif'];
+
 export async function runImageGuard() {
   const options = {
     dry: { type: 'boolean', default: false },
+    'heic-to-avif': { type: 'boolean', default: false },
     ignore: { type: 'string', multiple: false, default: '' },
+    'keep-heic': { type: 'boolean', default: false },
     staged: { type: 'boolean', default: false },
     quiet: { type: 'boolean', default: false }
   }
   const { values: argv } = parseArgs({ options })
 
   // Share status
-  const summary = (run) => {
+  const summary = (run, includesConversion = false) => {
     if (run) {
-      console.info(styleText(['bold'], `\nDefensive base compression completed. You saved ${utils.sizeReadable(savedKB)}.`))
+      const action = includesConversion ? 'compression and conversion' : 'compression'
+      console.info(styleText(['bold'], `\nDefensive base ${action} completed. You saved ${utils.sizeReadable(savedKB)}.`))
     } else {
-      console.info(styleText(['bold'], 'There were no images to compress.'))
+      const what = includesConversion ? 'images to compress or convert' : 'images to compress'
+      console.info(styleText(['bold'], `There were no ${what}.`))
     }
   }
 
+  const allTypes = argv['heic-to-avif'] ? [...fileTypes, ...convertTypes] : fileTypes
   if (!argv.quiet) {
-    console.log(`(Search pattern: ${fileTypes.join(', ')})\n`)
+    console.log(`(Search pattern: ${allTypes.join(', ')})\n`)
   }
 
   let savedKB = 0
@@ -71,66 +79,75 @@ export async function runImageGuard() {
     })
   }
 
-  const compress = async (files, dry) => {
-    if (files.length === 0) {
-      summary(false)
-      return
-    }
-
+  const setupSharpConcurrency = () => {
     const desiredFileConcurrency = Math.min(os.cpus().length, 4)
-    // Tune libvips threads to avoid oversubscription
     const perTaskThreads = Math.max(1, Math.floor(os.cpus().length / Math.max(1, desiredFileConcurrency)))
     try {
       sharp.concurrency(perTaskThreads)
     } catch {
-      // Best-effort; ignore if not supported (could log in debug mode)
+      // Best-effort; ignore if not supported
     }
+    return desiredFileConcurrency
+  }
 
-    const limit = createLimiter(desiredFileConcurrency)
-    const tasks = files.map(file => limit(() => utils.compression(file, dry, argv.quiet)))
-    const results = await Promise.allSettled(tasks)
-
+  const processResults = (results) => {
     let hadFailures = false
     for (const r of results) {
       if (r.status === 'fulfilled') {
         if (typeof r.value === 'number') {
           savedKB += r.value
         } else {
-          // Treat non-numeric fulfillment as a failure signal
           hadFailures = true
         }
       } else {
         hadFailures = true
-        // Log the underlying reason to aid troubleshooting
         const reason = r.reason && r.reason.message ? r.reason.message : String(r.reason)
-        console.error(styleText('red', 'Compression task failed:'), reason)
+        console.error(styleText('red', 'Task failed:'), reason)
       }
     }
-
-    if (hadFailures) {
-      process.exitCode = 1
-      summary(false)
-      return
-    }
-
-    summary(true)
+    return hadFailures
   }
 
-  const getFilePattern = (ignore) => {
-    const patterns = []
+  const compress = async (files, dry) => {
+    if (files.length === 0) return false
 
-    // Rely on `caseSensitiveMatch: false` instead of duplicating upper/lower-case
-    for (const fileType of fileTypes) {
-      patterns.push(`**/*.${fileType}`)
-    }
+    const concurrency = setupSharpConcurrency()
+    const limit = createLimiter(concurrency)
+    const tasks = files.map(file => limit(() => utils.compression(file, dry, argv.quiet)))
+    const results = await Promise.allSettled(tasks)
 
-    const ignoreList = (ignore || '')
+    return processResults(results)
+  }
+
+  const convert = async (files, dry, keepOriginal) => {
+    if (files.length === 0) return false
+
+    const concurrency = setupSharpConcurrency()
+    const limit = createLimiter(concurrency)
+    const tasks = files.map(file => limit(() => utils.conversion(file, dry, keepOriginal, argv.quiet)))
+    const results = await Promise.allSettled(tasks)
+
+    return processResults(results)
+  }
+
+  const getIgnorePatterns = (ignore) => {
+    return (ignore || '')
       .split(',')
       .map(s => s.trim())
       .filter(Boolean)
+      .map(p => (p.startsWith('!') ? p : `!${p}`))
+  }
 
-    for (const p of ignoreList) {
-      patterns.push(p.startsWith('!') ? p : `!${p}`)
+  const getFilePattern = (ignore, types = fileTypes) => {
+    const patterns = []
+
+    // Rely on `caseSensitiveMatch: false` instead of duplicating upper/lower-case
+    for (const fileType of types) {
+      patterns.push(`**/*.${fileType}`)
+    }
+
+    for (const p of getIgnorePatterns(ignore)) {
+      patterns.push(p)
     }
 
     return patterns
@@ -145,51 +162,68 @@ export async function runImageGuard() {
     })
   }
 
-  const patterns = getFilePattern(argv.ignore)
-  let files = []
-  let compressionFiles = []
+  const filterStagedFiles = async (stagedFiles, types) => {
+    const allowedExts = new Set(types)
+    const byExt = stagedFiles.filter(f => allowedExts.has(path.extname(f).slice(1).toLowerCase()))
+    const ignoreList = getIgnorePatterns(argv.ignore)
 
-  // Search for staged files
+    if (ignoreList.length > 0) {
+      const escapedPaths = byExt.map(p => convertPathToPattern(p))
+      return globby([...escapedPaths, ...ignoreList], {
+        gitignore: true,
+        expandDirectories: false,
+        onlyFiles: true,
+        caseSensitiveMatch: false
+      })
+    }
+    return byExt
+  }
+
+  const doConversion = argv['heic-to-avif']
+  let hadFailures = false
+  let totalFiles = 0
+
   if (argv.staged) {
     const git = simpleGit()
     try {
-      // Get staged file paths directly from Git
       const diffOutput = await git.raw(['diff', '--name-only', '--cached', '--diff-filter=ACMRT'])
       const stagedFiles = diffOutput.split('\n').map(s => s.trim()).filter(Boolean)
-      // Filter by allowed extensions
-      const allowedExts = new Set(fileTypes)
-      const byExt = stagedFiles.filter(f => allowedExts.has(path.extname(f).slice(1).toLowerCase()))
-      // Apply `--ignore` using the same glob semantics as non-staged by delegating to globby
-      const ignoreList = (argv.ignore || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean)
-        .map(p => (p.startsWith('!') ? p : `!${p}`))
 
-      if (ignoreList.length > 0) {
-        // Use globby to filter the staged list with identical options; avoid repo-wide scan
-        // Pass the staged file paths as include patterns and the ignores as negatives
-        const escapedPaths = byExt.map(p => convertPathToPattern(p))
-        const filtered = await globby([...escapedPaths, ...ignoreList], {
-          gitignore: true,
-          expandDirectories: false,
-          onlyFiles: true,
-          caseSensitiveMatch: false
-        })
-        compressionFiles = filtered
-      } else {
-        compressionFiles = byExt
+      const compressionFiles = await filterStagedFiles(stagedFiles, fileTypes)
+      totalFiles += compressionFiles.length
+      hadFailures = await compress(compressionFiles, argv.dry)
+
+      if (doConversion) {
+        const conversionFiles = await filterStagedFiles(stagedFiles, convertTypes)
+        totalFiles += conversionFiles.length
+        const convFailed = await convert(conversionFiles, argv.dry, argv['keep-heic'])
+        hadFailures = hadFailures || convFailed
       }
-      await compress(compressionFiles, argv.dry)
     } catch (err) {
       console.error(err)
-      // Ensure non-zero exit and failure summary on staged path errors
-      process.exitCode = 1
-      summary(false)
+      hadFailures = true
     }
   } else {
-    files = await findFiles(patterns)
-    compressionFiles = files
-    await compress(compressionFiles, argv.dry)
+    const patterns = getFilePattern(argv.ignore)
+    const compressionFiles = await findFiles(patterns)
+    totalFiles += compressionFiles.length
+    hadFailures = await compress(compressionFiles, argv.dry)
+
+    if (doConversion) {
+      const convPatterns = getFilePattern(argv.ignore, convertTypes)
+      const conversionFiles = await findFiles(convPatterns)
+      totalFiles += conversionFiles.length
+      const convFailed = await convert(conversionFiles, argv.dry, argv['keep-heic'])
+      hadFailures = hadFailures || convFailed
+    }
+  }
+
+  if (hadFailures) {
+    process.exitCode = 1
+    summary(false, doConversion)
+  } else if (totalFiles > 0) {
+    summary(true, doConversion)
+  } else {
+    summary(false, doConversion)
   }
 }
