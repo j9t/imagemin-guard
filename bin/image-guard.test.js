@@ -451,19 +451,26 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('Dry run does not convert HEIC files', () => {
+  test('Dry run does not convert HEIC files but reports sizes', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-dry-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
+
+    // Remove pre-existing AVIF so the conversion path is exercised
+    const avifFile = path.join(tempTestFolder, 'test.avif')
+    if (fs.existsSync(avifFile)) {
+      fs.unlinkSync(avifFile)
+    }
 
     const heicFile = path.join(tempTestFolder, 'test.heic')
     const heicBefore = fs.statSync(heicFile)
     const filesBefore = fs.readdirSync(tempTestFolder).sort()
 
     const originalCwd = process.cwd()
+    let output = ''
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}" --heic-to-avif --dry`, { stdio: 'pipe' })
+      output = execSync(`node "${imageGuardScript}" --heic-to-avif --dry`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     } finally {
       process.chdir(originalCwd)
     }
@@ -476,6 +483,9 @@ describe('Image Guard', () => {
     // No files should be added or removed
     const filesAfter = fs.readdirSync(tempTestFolder).sort()
     assert.deepStrictEqual(filesAfter, filesBefore)
+
+    // Dry run should report size data for HEIC conversion
+    assert.match(output, /Converted.*test\.heic.*KB.*→.*KB/i, 'Dry run should report HEIC conversion sizes')
 
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
