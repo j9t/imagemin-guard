@@ -4,6 +4,14 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.1] - 2026-02-17
+
+### Changed
+
+* HEIC-to-AVIF conversion now uses lossy encoding (quality 80) instead of lossless, producing files smaller than the HEIC originals
+* Removed redundant lossless compression pass after HEIC conversion
+* Documented Display P3 to sRGB color space mapping during HEIC conversion
+
 ## [5.2.0] - 2026-02-17
 
 ### Added

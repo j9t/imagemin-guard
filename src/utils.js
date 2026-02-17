@@ -232,25 +232,22 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
       return 0
     }
 
-    // Encode as lossless AVIF (pass the decoded view directly to avoid extra-byte issues)
+    // Encode as lossy AVIF—HEIC sources are already lossy (HEVC), so lossless
+    // re-encoding would inflate file sizes without any quality benefit
     await sharp(data, { raw: { width, height, channels: 4 } })
-      .toFormat('avif', { effort: 5, lossless: true })
+      .toFormat('avif', { quality: 80, effort: 5 })
       .toFile(avifPath)
 
     const fileSizeAfter = await size(avifPath)
 
     logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
 
-    // Compress the resulting AVIF through the standard compression pipeline
-    const saved = await compression(avifPath, dry, quiet)
-
-    // Delete original HEIC/HEIF file unless --keep-heic is set (deferred until after compression succeeds)
+    // Delete original HEIC/HEIF file unless `--keep-heic` is set
     if (!keepOriginal) {
       await retryFileOperation(() => fs.promises.unlink(filename))
     }
 
-    // Return compression savings only (conversion size change is informational)
-    return saved
+    return fileSizeAfter < fileSizeBefore ? fileSizeBefore - fileSizeAfter : 0
 
   } catch (err) {
     // Clean up partial AVIF if it was created

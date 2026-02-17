@@ -111,7 +111,7 @@ npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) in `git diff` and only processes those files—that approach makes Image Guard more efficient in operation.
 
-* `--heic-to-avif` converts HEIC/HEIF files to lossless AVIF. The conversion decodes HEIC/HEIF pixel data and re-encodes it as lossless AVIF, then runs the result through Image Guard’s compression pipeline. Original HEIC/HEIF files are deleted after conversion by default.
+* `--heic-to-avif` converts HEIC/HEIF files to AVIF. Because HEIC sources are already lossy-compressed (HEVC), the conversion uses lossy AVIF encoding (quality 80) to produce files smaller than the originals at near-identical visual quality. Original HEIC/HEIF files are deleted after conversion by default. (Note: The conversion maps Display P3 colors—common on iPhones—to sRGB, which may result in slightly less vivid colors.)
 
   - `--keep-heic` (used with `--heic-to-avif`) preserves the original HEIC/HEIF files instead of deleting them after conversion.
 
@@ -148,7 +148,7 @@ Tip: Use `--quiet` to suppress these per‑file lines and keep only the final su
 
 Image Guard is a Node script that uses [sharp](https://www.npmjs.com/package/sharp) under the hood.
 
-Automated compression works by monitoring whether a given [change list](https://webglossary.info/terms/change-list/) includes any PNGs, JPGs, GIFs, WebPs, or AVIFs (and HEIC/HEIF when opted in). It’s initiated by a Git hook. Only those images are compressed where there is an improvement. HEIC conversion uses [heic-decode](https://www.npmjs.com/package/heic-decode) for patent-free decoding and sharp for AVIF encoding. The processed images can then be committed to the underlying repository.
+Automated compression works by monitoring whether a given [change list](https://webglossary.info/terms/change-list/) includes any PNGs, JPGs, GIFs, WebPs, or AVIFs (and HEIC/HEIF when opted in). It’s initiated by a Git hook. Only those images are compressed where there is an improvement. HEIC conversion uses [heic-decode](https://www.npmjs.com/package/heic-decode) for patent-free decoding and sharp for lossy AVIF encoding (quality 80). The processed images can then be committed to the underlying repository.
 
 Through this approach, though glossed over here, Image Guard makes up for what’s missing or complicated in other packages, namely easy, near-riskless, automatable, resource-friendly in-repo optimization.
 

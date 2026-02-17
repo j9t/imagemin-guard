@@ -415,7 +415,12 @@ describe('Image Guard', () => {
 
     // AVIF should be created by the conversion
     assert.strictEqual(fs.existsSync(avifFile), true, 'AVIF file should be created')
-    assert.ok(fs.statSync(avifFile).size > 0, 'AVIF file should not be empty')
+    const avifSize = fs.statSync(avifFile).size
+    assert.ok(avifSize > 0, 'AVIF file should not be empty')
+
+    // Lossy AVIF should not be larger than the HEIC source
+    const heicSize = fs.statSync(path.join(testFolder, 'test.heic')).size
+    assert.ok(avifSize <= heicSize, `AVIF (${avifSize}) should not be larger than HEIC (${heicSize})`)
 
     // Original HEIC should be deleted
     assert.strictEqual(fs.existsSync(heicFile), false, 'Original HEIC should be deleted')

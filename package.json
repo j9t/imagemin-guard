@@ -46,5 +46,5 @@
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.2.0"
+  "version": "5.2.1"
 }
