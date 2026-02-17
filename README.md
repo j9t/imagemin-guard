@@ -140,7 +140,7 @@ Roughly like this:
 * Green: The image file has been compressed.
 * Cyan: The image file has been converted (HEIC/HEIF to AVIF).
 * White (light gray): The image file has not been changed.
-* Blue: The image file had already been compressed more aggressively than the new result, and was therefore skipped, too.
+* Blue: The image file had already been compressed more effectively than the new result, and was therefore skipped, too.
 
 Tip: Use `--quiet` to suppress these per‑file lines and keep only the final summary.
 
