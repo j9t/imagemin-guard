@@ -263,8 +263,8 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     }
 
     if (err.message && (
-      err.message.includes('Invalid') ||
-      err.message.includes('not a HEIF')
+      err.message.includes('not a HEIC image') ||
+      err.message.includes('HEIF image not found')
     )) {
       logMessage(`Skipped ${filename} (corrupt or unsupported HEIC/HEIF file)`, dry, 'yellow', quiet)
     } else {
