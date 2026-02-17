@@ -8,7 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-* HEIC-to-AVIF conversion now uses lossy encoding (quality 90) instead of lossless, producing files smaller than the HEIC originals
+* HEIC-to-AVIF conversion now uses lossy encoding (quality 80) instead of lossless, producing files smaller than the HEIC originals
+* Removed redundant lossless compression pass after HEIC conversion
+* Documented Display P3 to sRGB color space mapping during HEIC conversion
 
 ## [5.2.0] - 2026-02-17
 
