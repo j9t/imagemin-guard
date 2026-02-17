@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-* Updated HEIC dry run to reports actual file sizes instead of omitting size data
+* Updated HEIC dry run to report actual file sizes instead of omitting size data
 
 ## [5.2.1] - 2026-02-17
 
