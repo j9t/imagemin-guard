@@ -223,9 +223,10 @@ export async function runImageGuard() {
 
   if (hadFailures) {
     process.exitCode = 1
-    if (totalFiles > 0 && savedKB > 0) {
+    if (totalFiles > 0) {
       const action = doConversion ? 'compression and conversion' : 'compression'
-      console.info(styleText(['bold'], `\nDefensive base ${action} partially completed (some tasks failed). You saved ${utils.sizeReadable(savedKB)}.`))
+      const savings = savedKB > 0 ? ` You saved ${utils.sizeReadable(savedKB)}.` : ''
+      console.info(styleText(['bold'], `\nDefensive base ${action} partially completed (some tasks failed).${savings}`))
     } else {
       summary(false, doConversion)
     }
