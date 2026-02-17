@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
 import { styleText } from 'node:util'
+import decode from 'heic-decode'
 
 const logMessage = (message, dry, color = 'yellow', quiet = false) => {
   if (quiet) return
@@ -190,6 +191,89 @@ const compression = async (filename, dry, quiet = false) => {
   }
 }
 
+const conversion = async (filename, dry, keepOriginal, quiet = false) => {
+  const fileSizeBefore = await size(filename)
+
+  if (fileSizeBefore === 0) {
+    logMessage(`Skipped ${filename} (${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
+    return 0
+  }
+
+  const maxFileSize = 100 * 1024 * 1024 // 100 MB
+
+  if (fileSizeBefore > maxFileSize) {
+    logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
+    return 0
+  }
+
+  if (!/\.hei[cf]$/i.test(filename)) {
+    logMessage(`Skipped ${filename} (not a HEIC/HEIF file)`, dry, 'yellow', quiet)
+    return 0
+  }
+
+  const avifPath = filename.replace(/\.hei[cf]$/i, '.avif')
+
+  // Avoid overwriting an existing AVIF file
+  try {
+    await fs.promises.access(avifPath)
+    logMessage(`Skipped ${filename} (${path.basename(avifPath)} already exists)`, dry, 'yellow', quiet)
+    return 0
+  } catch {
+    // File does not exist—proceed with conversion
+  }
+
+  try {
+    // Decode HEIC/HEIF to raw pixel data
+    const inputBuffer = await fs.promises.readFile(filename)
+    const { width, height, data } = await decode({ buffer: inputBuffer })
+
+    if (dry) {
+      logMessage(`Converted ${filename} → ${path.basename(avifPath)}`, dry, 'cyan', quiet)
+      return 0
+    }
+
+    // Encode as lossless AVIF (pass the decoded view directly to avoid extra-byte issues)
+    await sharp(data, { raw: { width, height, channels: 4 } })
+      .toFormat('avif', { effort: 5, lossless: true })
+      .toFile(avifPath)
+
+    const fileSizeAfter = await size(avifPath)
+
+    logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
+
+    // Compress the resulting AVIF through the standard compression pipeline
+    const saved = await compression(avifPath, dry, quiet)
+
+    // Delete original HEIC/HEIF file unless --keep-heic is set (deferred until after compression succeeds)
+    if (!keepOriginal) {
+      await retryFileOperation(() => fs.promises.unlink(filename))
+    }
+
+    // Return compression savings only (conversion size change is informational)
+    return saved
+
+  } catch (err) {
+    // Clean up partial AVIF if it was created
+    try {
+      await fs.promises.unlink(avifPath)
+    } catch (cleanupErr) {
+      if (cleanupErr.code !== 'ENOENT') {
+        console.warn(styleText('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
+      }
+    }
+
+    if (err.message && (
+      err.message.includes('not a HEIC image') ||
+      err.message.includes('HEIF image not found')
+    )) {
+      logMessage(`Skipped ${filename} (corrupt or unsupported HEIC/HEIF file)`, dry, 'yellow', quiet)
+    } else {
+      console.error(styleText('red', `Error converting ${filename}:`), err)
+    }
+    return 0
+  }
+}
+
 const size = async (file) => {
   const stats = await fs.promises.stat(file)
   return stats.size
@@ -197,4 +281,4 @@ const size = async (file) => {
 
 const sizeReadable = (size) => `${(size / 1024).toFixed(2)} KB`
 
-export const utils = { compression, sizeReadable }
+export const utils = { compression, conversion, sizeReadable }

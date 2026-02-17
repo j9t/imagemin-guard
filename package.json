@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "globby": "^16.1.0",
+    "heic-decode": "^2.1.0",
     "sharp": "^0.34.5",
     "simple-git": "^3.30.0"
   },
@@ -22,6 +23,8 @@
     "compression",
     "gif",
     "graphics",
+    "heic",
+    "heif",
     "images",
     "jpeg",
     "jpg",
@@ -43,5 +46,5 @@
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.1.2"
+  "version": "5.2.0"
 }
