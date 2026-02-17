@@ -9,7 +9,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 * Added opt-in HEIC/HEIF-to-AVIF conversion via `--heic-to-avif` (with `--keep-heic` to preserve originals)
-
-### Internal
-
 * Introduced changelog
