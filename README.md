@@ -4,7 +4,7 @@
 
 (This project was based on [sum.cumo’s imagemin-merlin](https://github.com/sumcumo/imagemin-merlin). [Changes are documented](https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master), and include this README. Image Guard supports additional file formats—WebP, AVIF, and HEIC/HEIF—, comes with improved code and documentation, and is being maintained. For this reason, it’s [not based on any Imagemin packages](https://meiert.com/blog/image-guard-4/) anymore.)
 
-Image Guard takes care of near-lossless compression of your images, to help you avoid bloat in your repositories. It makes it convenient and as safe as possible to automatically compress PNG, JPG, GIF, WebP, and AVIF images. It can also convert HEIC/HEIF files to AVIF (opt-in via `--heic-to-avif`).
+Image Guard takes care of near-lossless compression of your images, to help you avoid bloat in your repositories. It makes it convenient and as safe as possible to automatically compress PNG, JPG, GIF, WebP, and AVIF images. It can also convert HEIC/HEIF files to AVIF.
 
 It’s convenient because setup is simple. Run it right away—done. Or install, run, add hook—done.
 
@@ -140,7 +140,7 @@ Roughly like this:
 * Green: The image file has been compressed.
 * Cyan: The image file has been converted (HEIC/HEIF to AVIF).
 * White (light gray): The image file has not been changed.
-* Blue: The image file had already been compressed more aggressively than the new result, and was therefore skipped, too.
+* Blue: The image file had already been compressed more effectively than the new result, and was therefore skipped, too.
 
 Tip: Use `--quiet` to suppress these per‑file lines and keep only the final summary.
 

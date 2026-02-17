@@ -133,7 +133,7 @@ const compression = async (filename, dry, quiet = false) => {
     } else if (fileSizeAfter > fileSizeBefore) {
       color = 'blue'
       status = 'Skipped'
-      details = 'already compressed more aggressively'
+      details = 'already compressed more effectively'
     }
 
     logMessage(`${status} ${filename} (${details})`, dry, color, quiet)
@@ -227,11 +227,6 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     const inputBuffer = await fs.promises.readFile(filename)
     const { width, height, data } = await decode({ buffer: inputBuffer })
 
-    if (dry) {
-      logMessage(`Converted ${filename} → ${path.basename(avifPath)}`, dry, 'cyan', quiet)
-      return 0
-    }
-
     // Encode as lossy AVIF—HEIC sources are already lossy (HEVC), so lossless
     // re-encoding would inflate file sizes without any quality benefit
     await sharp(data, { raw: { width, height, channels: 4 } })
@@ -241,6 +236,11 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     const fileSizeAfter = await size(avifPath)
 
     logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
+
+    if (dry) {
+      await retryFileOperation(() => fs.promises.unlink(avifPath))
+      return 0
+    }
 
     // Delete original HEIC/HEIF file unless `--keep-heic` is set
     if (!keepOriginal) {
