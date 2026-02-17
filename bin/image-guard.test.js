@@ -399,6 +399,12 @@ describe('Image Guard', () => {
     const heicFile = path.join(tempTestFolder, 'test.heic')
     assert.strictEqual(fs.existsSync(heicFile), true, 'HEIC test fixture must exist')
 
+    // Remove pre-existing AVIF so we can verify the conversion actually creates it
+    const avifFile = path.join(tempTestFolder, 'test.avif')
+    if (fs.existsSync(avifFile)) {
+      fs.unlinkSync(avifFile)
+    }
+
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
@@ -407,8 +413,7 @@ describe('Image Guard', () => {
       process.chdir(originalCwd)
     }
 
-    // AVIF should be created
-    const avifFile = path.join(tempTestFolder, 'test.avif')
+    // AVIF should be created by the conversion
     assert.strictEqual(fs.existsSync(avifFile), true, 'AVIF file should be created')
     assert.ok(fs.statSync(avifFile).size > 0, 'AVIF file should not be empty')
 
