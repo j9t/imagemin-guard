@@ -213,6 +213,15 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
 
   const avifPath = filename.replace(/\.hei[cf]$/i, '.avif')
 
+  // Avoid overwriting an existing AVIF file
+  try {
+    await fs.promises.access(avifPath)
+    logMessage(`Skipped ${filename} (${path.basename(avifPath)} already exists)`, dry, 'yellow', quiet)
+    return 0
+  } catch {
+    // File does not exist—proceed with conversion
+  }
+
   try {
     // Decode HEIC/HEIF to raw pixel data
     const inputBuffer = await fs.promises.readFile(filename)
