@@ -36,6 +36,10 @@ export async function runImageGuard() {
     }
   }
 
+  if (argv['keep-heic'] && !argv['heic-to-avif']) {
+    console.warn(styleText('yellow', '`--keep-heic` has no effect without `--heic-to-avif`'))
+  }
+
   const allTypes = argv['heic-to-avif'] ? [...fileTypes, ...convertTypes] : fileTypes
   if (!argv.quiet) {
     console.log(`(Search pattern: ${allTypes.join(', ')})\n`)

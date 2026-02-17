@@ -493,4 +493,23 @@ describe('Image Guard', () => {
 
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
+
+  test('`--keep-heic` without `--heic-to-avif` warns', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-keep-warn-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    let output = ''
+    try {
+      process.chdir(tempDir)
+      output = execSync(`node "${imageGuardScript}" --keep-heic 2>&1`, { encoding: 'utf8' })
+    } finally {
+      process.chdir(originalCwd)
+    }
+
+    assert.match(output, /`--keep-heic` has no effect without `--heic-to-avif`/)
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
 })
