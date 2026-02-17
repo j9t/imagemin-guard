@@ -235,7 +235,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     // Encode as lossy AVIF—HEIC sources are already lossy (HEVC), so lossless
     // re-encoding would inflate file sizes without any quality benefit
     await sharp(data, { raw: { width, height, channels: 4 } })
-      .toFormat('avif', { quality: 90, effort: 5 })
+      .toFormat('avif', { quality: 80, effort: 5 })
       .toFile(avifPath)
 
     const fileSizeAfter = await size(avifPath)
