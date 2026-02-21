@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-* Improved corrupt-file error detection to cover WebP and AVIF formats, and avoid false positives from the overly broad `Invalid` string match
+* Improved corrupt-file error detection to cover WebP and AVIF formats, normalize message casing before matching, and avoid false positives from the overly broad `Invalid` string match
 * Warned when a `.bak` file is left behind after a failed file replacement
 * Removed a dead code branch in result processing
 
@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Moved to compression and conversion running in parallel (non-overlapping file sets), reducing wall-clock time when `--heic-to-avif` is active
 * Reduced directory traversals from two to one in non-staged mode when `--heic-to-avif` is active
 * Extracted shared `MAX_FILE_SIZE` constant; aligned `node:fs` and `node:path` import style in `utils.js`
+* Extended test coverage for corrupt file detection and reporting
 
 ## [5.2.2] - 2026-02-17
 
