@@ -523,17 +523,16 @@ describe('Image Guard', () => {
     let output = ''
     try {
       process.chdir(tempDir)
-      output = execSync(`node "${imageGuardScript}" 2>&1`, { encoding: 'utf8' })
+      output = execSync(`node "${imageGuardScript}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     } finally {
       process.chdir(originalCwd)
+      fs.rmSync(tempDir, { recursive: true, force: true })
     }
 
     assert.match(output, /Skipped.*test#corrupt\.gif.*corrupt file/i)
-
-    fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('Ensure `--keep-heic` without `--heic-to-avif` warns', () => {
+  test('Ensure `--keep-heic` without `--heic-to-avif` issues warning', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-keep-warn-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
