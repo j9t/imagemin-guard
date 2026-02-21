@@ -97,11 +97,7 @@ export async function runImageGuard() {
     let addedKB = 0
     for (const r of results) {
       if (r.status === 'fulfilled') {
-        if (typeof r.value === 'number') {
-          addedKB += r.value
-        } else {
-          hadFailures = true
-        }
+        addedKB += r.value
       } else {
         hadFailures = true
         const reason = r.reason && r.reason.message ? r.reason.message : String(r.reason)
@@ -192,32 +188,44 @@ export async function runImageGuard() {
       const diffOutput = await git.raw(['diff', '--name-only', '--cached', '--diff-filter=ACMRT'])
       const stagedFiles = diffOutput.split('\n').map(s => s.trim()).filter(Boolean)
 
-      const compressionFiles = await filterStagedFiles(stagedFiles, fileTypes)
-      totalFiles += compressionFiles.length
-      hadFailures = await compress(compressionFiles, argv.dry)
+      // Collect compression and conversion candidates in parallel
+      const [compressionFiles, conversionFiles] = await Promise.all([
+        filterStagedFiles(stagedFiles, fileTypes),
+        doConversion ? filterStagedFiles(stagedFiles, convertTypes) : Promise.resolve([])
+      ])
+      totalFiles += compressionFiles.length + conversionFiles.length
 
-      if (doConversion) {
-        const conversionFiles = await filterStagedFiles(stagedFiles, convertTypes)
-        totalFiles += conversionFiles.length
-        const convFailed = await convert(conversionFiles, argv.dry, argv['keep-heic'])
-        hadFailures = hadFailures || convFailed
-      }
+      // Run compression and conversion in parallel (non-overlapping file sets)
+      const [compFailed, convFailed] = await Promise.all([
+        compress(compressionFiles, argv.dry),
+        convert(conversionFiles, argv.dry, argv['keep-heic'])
+      ])
+      hadFailures = compFailed || convFailed
     } catch (err) {
       console.error(err)
       hadFailures = true
     }
   } else {
-    const patterns = getFilePattern(argv.ignore)
-    const compressionFiles = await findFiles(patterns)
+    // Single directory traversal for all relevant types
+    const allFiles = await findFiles(getFilePattern(argv.ignore, allTypes))
+
+    const compExts = new Set(fileTypes)
+    const compressionFiles = allFiles.filter(f => compExts.has(path.extname(f).slice(1).toLowerCase()))
     totalFiles += compressionFiles.length
-    hadFailures = await compress(compressionFiles, argv.dry)
 
     if (doConversion) {
-      const convPatterns = getFilePattern(argv.ignore, convertTypes)
-      const conversionFiles = await findFiles(convPatterns)
+      const convExts = new Set(convertTypes)
+      const conversionFiles = allFiles.filter(f => convExts.has(path.extname(f).slice(1).toLowerCase()))
       totalFiles += conversionFiles.length
-      const convFailed = await convert(conversionFiles, argv.dry, argv['keep-heic'])
-      hadFailures = hadFailures || convFailed
+
+      // Run compression and conversion in parallel (non-overlapping file sets)
+      const [compFailed, convFailed] = await Promise.all([
+        compress(compressionFiles, argv.dry),
+        convert(conversionFiles, argv.dry, argv['keep-heic'])
+      ])
+      hadFailures = compFailed || convFailed
+    } else {
+      hadFailures = await compress(compressionFiles, argv.dry)
     }
   }
 

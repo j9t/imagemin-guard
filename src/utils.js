@@ -1,10 +1,12 @@
 // This file, which had been forked from imagemin-merlin, was modified for image-guard: https://github.com/sumcumo/imagemin-merlin/compare/master...j9t:master
 
-import fs from 'fs'
-import path from 'path'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
 import sharp from 'sharp'
 import { styleText } from 'node:util'
 import decode from 'heic-decode'
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
 
 const logMessage = (message, dry, color = 'yellow', quiet = false) => {
   if (quiet) return
@@ -38,9 +40,7 @@ const compression = async (filename, dry, quiet = false) => {
     return 0
   }
 
-  const maxFileSize = 100 * 1024 * 1024 // 100 MB
-
-  if (fileSizeBefore > maxFileSize) {
+  if (fileSizeBefore > MAX_FILE_SIZE) {
     logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
     return 0
   }
@@ -114,17 +114,17 @@ const compression = async (filename, dry, quiet = false) => {
       details = `${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)}`
       if (!dry) {
         // Only now create a backup and replace the original
-        await retryFileOperation(() => fs.promises.copyFile(filename, filenameBackup))
+        await retryFileOperation(() => fs.copyFile(filename, filenameBackup))
         // Prefer atomic rename when possible
         try {
-          await retryFileOperation(() => fs.promises.rename(tempFilePath, filename))
+          await retryFileOperation(() => fs.rename(tempFilePath, filename))
           // Temp file was renamed (consumed)
           tempConsumed = true
           replacementSucceeded = true
         } catch {
           // Fallback to copy when rename across devices isn’t possible
-          await retryFileOperation(() => fs.promises.copyFile(tempFilePath, filename))
-          await retryFileOperation(() => fs.promises.unlink(tempFilePath))
+          await retryFileOperation(() => fs.copyFile(tempFilePath, filename))
+          await retryFileOperation(() => fs.unlink(tempFilePath))
           // Temp file explicitly removed after copy
           tempConsumed = true
           replacementSucceeded = true
@@ -139,17 +139,7 @@ const compression = async (filename, dry, quiet = false) => {
     logMessage(`${status} ${filename} (${details})`, dry, color, quiet)
 
     if (dry) {
-      await retryFileOperation(() => fs.promises.unlink(tempFilePath))
-      return 0
-    }
-
-    // Clean up temp file only when it wasn’t consumed
-    if (!tempConsumed) {
-      try {
-        await retryFileOperation(() => fs.promises.unlink(tempFilePath))
-      } catch (err) {
-        if (err.code !== 'ENOENT') throw err
-      }
+      return 0 // Temp file cleaned up in finally
     }
 
     if (fileSizeAfter === 0) {
@@ -160,15 +150,17 @@ const compression = async (filename, dry, quiet = false) => {
 
   } catch (err) {
 
-    // Check if this is a file corruption error
-    if (err.message && (
-      err.message.includes('corrupt header') ||
-      err.message.includes('Unexpected end of') ||
-      err.message.includes('Invalid') ||
-      err.message.includes('gifload:') ||
-      err.message.includes('pngload:') ||
-      err.message.includes('jpegload:')
-    )) {
+    // Check if this is a file corruption error (sharp/libvips error messages)
+    const msg = err.message ? err.message.toLowerCase() : ''
+    if (msg.includes('corrupt header') ||
+      msg.includes('unexpected end of') ||
+      msg.includes('invalid image') ||
+      msg.includes('gifload:') ||
+      msg.includes('pngload:') ||
+      msg.includes('jpegload:') ||
+      msg.includes('webpload:') ||
+      msg.includes('avifload:')
+    ) {
       logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow', quiet)
     } else {
       console.error(styleText('red', `Error compressing ${filename}:`), err)
@@ -177,14 +169,31 @@ const compression = async (filename, dry, quiet = false) => {
 
   } finally {
 
+    // Clean up temp file if it wasn’t consumed (covers dry-run, error, and no-improvement paths)
+    if (!tempConsumed) {
+      try {
+        await retryFileOperation(() => fs.unlink(tempFilePath))
+      } catch {
+        // Best-effort cleanup—ignore all errors to avoid masking the original error
+      }
+    }
+
     // If backup created (i.e., only in improvement path), try to remove it
     if (!dry && replacementSucceeded) {
       try {
-        await retryFileOperation(() => fs.promises.unlink(filenameBackup))
+        await retryFileOperation(() => fs.unlink(filenameBackup))
       } catch (err) {
         if (err.code !== 'ENOENT') {
           console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), err)
         }
+      }
+    } else if (!dry && !replacementSucceeded) {
+      // If a backup was created but replacement failed, warn so the user can recover it
+      try {
+        await fs.access(filenameBackup)
+        console.warn(styleText('yellow', `Replacement failed for ${filename}; backup preserved at ${filenameBackup}`))
+      } catch {
+        // No backup exists—nothing to warn about
       }
     }
 
@@ -199,9 +208,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     return 0
   }
 
-  const maxFileSize = 100 * 1024 * 1024 // 100 MB
-
-  if (fileSizeBefore > maxFileSize) {
+  if (fileSizeBefore > MAX_FILE_SIZE) {
     logMessage(`Skipped ${filename} (file too large: ${sizeReadable(fileSizeBefore)})`, dry, 'yellow', quiet)
     return 0
   }
@@ -215,7 +222,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
 
   // Avoid overwriting an existing AVIF file
   try {
-    await fs.promises.access(avifPath)
+    await fs.access(avifPath)
     logMessage(`Skipped ${filename} (${path.basename(avifPath)} already exists)`, dry, 'yellow', quiet)
     return 0
   } catch {
@@ -224,7 +231,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
 
   try {
     // Decode HEIC/HEIF to raw pixel data
-    const inputBuffer = await fs.promises.readFile(filename)
+    const inputBuffer = await fs.readFile(filename)
     const { width, height, data } = await decode({ buffer: inputBuffer })
 
     // Encode as lossy AVIF—HEIC sources are already lossy (HEVC), so lossless
@@ -238,13 +245,13 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     logMessage(`Converted ${filename} → ${path.basename(avifPath)} (${sizeReadable(fileSizeBefore)} → ${sizeReadable(fileSizeAfter)})`, dry, 'cyan', quiet)
 
     if (dry) {
-      await retryFileOperation(() => fs.promises.unlink(avifPath))
+      await retryFileOperation(() => fs.unlink(avifPath))
       return 0
     }
 
     // Delete original HEIC/HEIF file unless `--keep-heic` is set
     if (!keepOriginal) {
-      await retryFileOperation(() => fs.promises.unlink(filename))
+      await retryFileOperation(() => fs.unlink(filename))
     }
 
     return fileSizeAfter < fileSizeBefore ? fileSizeBefore - fileSizeAfter : 0
@@ -252,7 +259,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
   } catch (err) {
     // Clean up partial AVIF if it was created
     try {
-      await fs.promises.unlink(avifPath)
+      await retryFileOperation(() => fs.unlink(avifPath))
     } catch (cleanupErr) {
       if (cleanupErr.code !== 'ENOENT') {
         console.warn(styleText('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
@@ -272,7 +279,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
 }
 
 const size = async (file) => {
-  const stats = await fs.promises.stat(file)
+  const stats = await fs.stat(file)
   return stats.size
 }
 

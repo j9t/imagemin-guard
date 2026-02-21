@@ -141,7 +141,7 @@ describe('Image Guard', () => {
     assert.strictEqual(allCompressed, true)
   })
 
-  test('Do not modify files in dry run', () => {
+  test('Ensure files are not modified in dry run', () => {
     const originalStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
@@ -298,7 +298,7 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('Quiet mode suppresses per-file logs but keeps summary', () => {
+  test('Ensure quiet mode suppresses per-file logs but keeps summary', () => {
     // Prepare isolated temp directory with test images
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-quiet-'))
     const tempTestFolder = path.join(tempDir, 'test')
@@ -320,7 +320,7 @@ describe('Image Guard', () => {
     assert.strictEqual(!(/Compressed|Skipped/.test(stdout)), true)
   })
 
-  test('Dry and quiet runs leave no artifacts and do not mutate files', () => {
+  test('Ensure dry and quiet runs leave no artifacts and do not mutate files', () => {
     // Use isolated temp directory
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-dry-quiet-'))
     const tempTestFolder = path.join(tempDir, 'test')
@@ -368,7 +368,7 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('No .bak files remain after normal compression', () => {
+  test('Ensure no .bak files remain after normal compression', () => {
     // Prepare isolated temp directory with test images
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-bak-'))
     const tempTestFolder = path.join(tempDir, 'test')
@@ -428,7 +428,7 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('`--keep-heic` preserves original HEIC file', () => {
+  test('Ensure `--keep-heic` preserves original HEIC file', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-keep-heic-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
@@ -451,7 +451,7 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('Dry run does not convert HEIC files but reports sizes', () => {
+  test('Ensure dry run does not convert HEIC files but reports sizes', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-dry-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
@@ -490,7 +490,7 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('HEIC files are ignored without `--heic-to-avif` flag', () => {
+  test('Ensure HEIC files are ignored without `--heic-to-avif` flag', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-heic-noflag-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
@@ -514,7 +514,25 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test('`--keep-heic` without `--heic-to-avif` warns', () => {
+  test('Skip and report corrupt files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-corrupt-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const originalCwd = process.cwd()
+    let output = ''
+    try {
+      process.chdir(tempDir)
+      output = execSync(`node "${imageGuardScript}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+    } finally {
+      process.chdir(originalCwd)
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+
+    assert.match(output, /Skipped.*test#corrupt\.gif.*corrupt file/i)
+  })
+
+  test('Ensure `--keep-heic` without `--heic-to-avif` issues warning', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-keep-warn-'))
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
