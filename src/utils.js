@@ -161,16 +161,16 @@ const compression = async (filename, dry, quiet = false) => {
   } catch (err) {
 
     // Check if this is a file corruption error (sharp/libvips error messages)
-    if (err.message && (
-      err.message.includes('corrupt header') ||
-      err.message.includes('Unexpected end of') ||
-      err.message.includes('Invalid image') ||
-      err.message.includes('gifload:') ||
-      err.message.includes('pngload:') ||
-      err.message.includes('jpegload:') ||
-      err.message.includes('webpload:') ||
-      err.message.includes('avifload:')
-    )) {
+    const msg = err.message ? err.message.toLowerCase() : ''
+    if (msg.includes('corrupt header') ||
+      msg.includes('unexpected end of') ||
+      msg.includes('invalid image') ||
+      msg.includes('gifload:') ||
+      msg.includes('pngload:') ||
+      msg.includes('jpegload:') ||
+      msg.includes('webpload:') ||
+      msg.includes('avifload:')
+    ) {
       logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow', quiet)
     } else {
       console.error(styleText('red', `Error compressing ${filename}:`), err)
