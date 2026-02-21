@@ -173,10 +173,8 @@ const compression = async (filename, dry, quiet = false) => {
     if (!tempConsumed) {
       try {
         await retryFileOperation(() => fs.unlink(tempFilePath))
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          // Best-effort cleanup; don't mask original error
-        }
+      } catch {
+        // Best-effort cleanup—ignore all errors to avoid masking the original error
       }
     }
 
