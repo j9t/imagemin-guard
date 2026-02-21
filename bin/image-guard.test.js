@@ -141,7 +141,7 @@ describe('Image Guard', () => {
     assert.strictEqual(allCompressed, true)
   })
 
-  test('Do not modify files in dry run', () => {
+  test('Ensure files are not modified in dry run', () => {
     const originalStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
