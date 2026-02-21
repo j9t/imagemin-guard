@@ -139,17 +139,7 @@ const compression = async (filename, dry, quiet = false) => {
     logMessage(`${status} ${filename} (${details})`, dry, color, quiet)
 
     if (dry) {
-      await retryFileOperation(() => fs.unlink(tempFilePath))
-      return 0
-    }
-
-    // Clean up temp file only when it wasn’t consumed
-    if (!tempConsumed) {
-      try {
-        await retryFileOperation(() => fs.unlink(tempFilePath))
-      } catch (err) {
-        if (err.code !== 'ENOENT') throw err
-      }
+      return 0 // Temp file cleaned up in finally
     }
 
     if (fileSizeAfter === 0) {
@@ -178,6 +168,17 @@ const compression = async (filename, dry, quiet = false) => {
     return 0
 
   } finally {
+
+    // Clean up temp file if it wasn’t consumed (covers dry-run, error, and no-improvement paths)
+    if (!tempConsumed) {
+      try {
+        await retryFileOperation(() => fs.unlink(tempFilePath))
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          // Best-effort cleanup; don't mask original error
+        }
+      }
+    }
 
     // If backup created (i.e., only in improvement path), try to remove it
     if (!dry && replacementSucceeded) {
@@ -260,7 +261,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
   } catch (err) {
     // Clean up partial AVIF if it was created
     try {
-      await fs.unlink(avifPath)
+      await retryFileOperation(() => fs.unlink(avifPath))
     } catch (cleanupErr) {
       if (cleanupErr.code !== 'ENOENT') {
         console.warn(styleText('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
