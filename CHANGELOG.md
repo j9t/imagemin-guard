@@ -4,6 +4,13 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.4] - 2026-03-04
+
+### Fixed
+
+* Changed bin entry from a Node.js script to a shell wrapper that locates node from common version managers (nvm, Volta, asdf, mise) and package managers (Homebrew) before invocation, resolving hook failures in GUI Git clients that don’t inherit the shell’s PATH
+  - **Migration:** If you set up hooks, replace `npx image-guard --staged` with `./node_modules/.bin/image-guard --staged` in your `.githooks/pre-commit` or `.husky/pre-commit`.
+
 ## [5.2.3] - 2026-02-21
 
 ### Fixed
