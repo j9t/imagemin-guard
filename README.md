@@ -82,10 +82,10 @@ chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 If you already use [Husky](https://typicode.github.io/husky/), run the following commands in your project root (you can copy and execute them at once):
 
 ```console
-grep -qxF "./node_modules/.bin/image-guard --staged" .husky/pre-commit || echo "\n./node_modules/.bin/image-guard --staged" >> .husky/pre-commit;\
+grep -qxF "./node_modules/.bin/image-guard --staged" .husky/pre-commit || printf '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || echo '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || printf '\\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
 ```
 
 If you don’t use Husky yet, run the following commands from your project root:
