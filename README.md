@@ -64,7 +64,7 @@ Native Git hooks are simpler to set up and don’t require additional dependenci
 mkdir -p .githooks;\
 cat > .githooks/pre-commit << 'EOF'
 #!/bin/sh
-npx image-guard --staged
+./node_modules/.bin/image-guard --staged
 EOF
 chmod +x .githooks/pre-commit;\
 git config core.hooksPath .githooks;\
@@ -72,7 +72,7 @@ git add .githooks/pre-commit;\
 git commit -m "feat: add Git pre-commit hook for Image Guard";\
 npm pkg set scripts.postprepare="mkdir -p .githooks && cat > .githooks/pre-commit << 'EOF'
 #\!/bin/sh
-npx image-guard --staged
+./node_modules/.bin/image-guard --staged
 EOF
 chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 ```
@@ -82,10 +82,10 @@ chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 If you already use [Husky](https://typicode.github.io/husky/), run the following commands in your project root (you can copy and execute them at once):
 
 ```console
-grep -qxF "npx image-guard --staged" .husky/pre-commit || echo "\nnpx image-guard --staged" >> .husky/pre-commit;\
+grep -qxF "./node_modules/.bin/image-guard --staged" .husky/pre-commit || echo "\n./node_modules/.bin/image-guard --staged" >> .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre-commit || echo '\nnpx image-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || echo '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
 ```
 
 If you don’t use Husky yet, run the following commands from your project root:
@@ -93,10 +93,10 @@ If you don’t use Husky yet, run the following commands from your project root:
 ```console
 npm i -D husky;\
 npx husky init;\
-echo "npx image-guard --staged" > .husky/pre-commit;\
+echo "./node_modules/.bin/image-guard --staged" > .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre-commit || echo '\nnpx image-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || echo '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
 ```
 
 (The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
@@ -116,20 +116,6 @@ npm pkg set scripts.postprepare="grep -qxF 'npx image-guard --staged' .husky/pre
   - `--keep-heic` (used with `--heic-to-avif`) preserves the original HEIC/HEIF files instead of deleting them after conversion.
 
 * `--quiet` suppresses per‑file logs and prints only the final summary (plus errors). This reduces console noise and speeds up runs in CI and Git hooks.
-
-### Troubleshooting
-
-#### “npx: command not found”
-
-If Git hooks fail with “npx: command not found,” make sure to install (`npm i -D image-guard`) and to refer to the binary directly in the `pre-commit` hook (and, not detailed here, also in the `postprepare` script):
-
-```console
-#!/bin/sh
-export PATH="$PWD/node_modules/.bin:$PATH"
-./node_modules/.bin/image-guard --staged
-```
-
-This issue can arise in GUI Git clients (VS Code, GitHub Desktop, etc.) or with Node version managers, as these environments may not inherit your shell's `PATH`/Node environment. This affects any tool using npx in hooks.
 
 ## What Does the Output Look Like?
 
