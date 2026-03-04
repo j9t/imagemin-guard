@@ -88,7 +88,7 @@ git commit -m "feat: add Husky pre-commit hook for Image Guard";\
 npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || printf '\\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
 ```
 
-If you don’t use Husky yet, run the following commands from your project root:
+If you don’t yet but want to use Husky, run the following commands from your project root:
 
 ```console
 npm i -D husky;\
@@ -96,7 +96,7 @@ npx husky init;\
 echo "./node_modules/.bin/image-guard --staged" > .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
-npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || echo '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
+npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --staged' .husky/pre-commit || printf '\\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit"
 ```
 
 (The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
