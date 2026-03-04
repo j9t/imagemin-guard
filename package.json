@@ -1,9 +1,9 @@
 {
   "author": "Jens Oliver Meiert",
   "bin": {
-    "image-guard": "bin/image-guard.js",
-    "imagemin-guard": "bin/image-guard.js",
-    "imagemin-merlin": "bin/image-guard.js"
+    "image-guard": "bin/image-guard.sh",
+    "imagemin-guard": "bin/image-guard.sh",
+    "imagemin-merlin": "bin/image-guard.sh"
   },
   "dependencies": {
     "globby": "^16.1.0",
@@ -46,5 +46,5 @@
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.2.3"
+  "version": "5.2.4"
 }
