@@ -305,7 +305,7 @@ describe('Image Guard', () => {
     copyFiles(testFolder, tempTestFolder)
 
     const originalCwd = process.cwd()
-    let stdout = ''
+    let stdout
     try {
       process.chdir(tempDir)
       stdout = execSync(`node "${imageGuardScript}" --quiet`, { encoding: 'utf8' })
@@ -333,7 +333,7 @@ describe('Image Guard', () => {
     })
 
     const originalCwd = process.cwd()
-    let stdout = ''
+    let stdout
     try {
       process.chdir(tempDir)
       stdout = execSync(`node "${imageGuardScript}" --dry --quiet`, { encoding: 'utf8' })
@@ -467,7 +467,7 @@ describe('Image Guard', () => {
     const filesBefore = fs.readdirSync(tempTestFolder).sort()
 
     const originalCwd = process.cwd()
-    let output = ''
+    let output
     try {
       process.chdir(tempDir)
       output = execSync(`node "${imageGuardScript}" --heic-to-avif --dry`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
@@ -520,7 +520,7 @@ describe('Image Guard', () => {
     copyFiles(testFolder, tempTestFolder)
 
     const originalCwd = process.cwd()
-    let output = ''
+    let output
     try {
       process.chdir(tempDir)
       output = execSync(`node "${imageGuardScript}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
@@ -538,7 +538,7 @@ describe('Image Guard', () => {
     copyFiles(testFolder, tempTestFolder)
 
     const originalCwd = process.cwd()
-    let output = ''
+    let output
     try {
       process.chdir(tempDir)
       output = execSync(`node "${imageGuardScript}" --keep-heic 2>&1`, { encoding: 'utf8' })

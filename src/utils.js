@@ -283,6 +283,6 @@ const size = async (file) => {
   return stats.size
 }
 
-const sizeReadable = (size) => `${(size / 1024).toFixed(2)} KB`
+const sizeReadable = (size) => `${(size / 1024).toFixed(2)} KB` // eslint-disable-line no-irregular-whitespace
 
 export const utils = { compression, conversion, sizeReadable }

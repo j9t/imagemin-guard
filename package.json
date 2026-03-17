@@ -13,6 +13,7 @@
   },
   "description": "Near-lossless image compressor that’s easy to use and easy to automate",
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
     "eslint": "^10.0.0"
   },
   "funding": "https://github.com/j9t/image-guard?sponsor=1",
@@ -46,5 +47,5 @@
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
-  "version": "5.2.4"
+  "version": "5.2.5"
 }

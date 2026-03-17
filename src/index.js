@@ -179,7 +179,7 @@ export async function runImageGuard() {
   }
 
   const doConversion = argv['heic-to-avif']
-  let hadFailures = false
+  let hadFailures
   let totalFiles = 0
 
   if (argv.staged) {

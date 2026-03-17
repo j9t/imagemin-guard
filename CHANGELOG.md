@@ -4,6 +4,12 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.5] - 2026-03-17
+
+### Fixed
+
+* Added recommended ESLint rules to config and fixed resulting warnings
+
 ## [5.2.4] - 2026-03-04
 
 ### Fixed
