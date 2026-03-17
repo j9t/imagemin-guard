@@ -20,8 +20,8 @@ export default [
     },
     rules: {
       'no-console': 'off', // CLI tool—allow console
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      eqeqeq: ['warn', 'smart'],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      eqeqeq: ['error', 'smart'],
       curly: ['warn', 'multi-line']
     }
   }
