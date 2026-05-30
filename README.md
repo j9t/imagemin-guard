@@ -20,7 +20,7 @@ It’s as safe as possible because compression happens losslessly (near-lossless
 
 You can use Image Guard right away, without installation, by running
 
-```console
+```shell
 npx image-guard
 ```
 
@@ -28,13 +28,13 @@ npx image-guard
 
 Install Image Guard in your project:
 
-```console
+```shell
 npm i -D image-guard
 ```
 
 Run Image Guard by calling
 
-```console
+```shell
 npx image-guard
 ```
 
@@ -44,13 +44,13 @@ To make sure that _all_ images are being compressed, it’s recommended to run I
 
 Install Image Guard in your project:
 
-```console
+```shell
 npm i -D image-guard
 ```
 
 To compress images already in the codebase, run Image Guard once by calling
 
-```console
+```shell
 npx image-guard
 ```
 
@@ -60,7 +60,7 @@ For automated use, Image Guard should be triggered through a [Git hook](https://
 
 Native Git hooks are simpler to set up and don’t require additional dependencies. Run these commands from your project root:
 
-```console
+```shell
 mkdir -p .githooks;\
 cat > .githooks/pre-commit << 'EOF'
 #!/bin/sh
@@ -81,7 +81,7 @@ chmod +x .githooks/pre-commit && git config core.hooksPath .githooks"
 
 If you already use [Husky](https://typicode.github.io/husky/), run the following commands in your project root (you can copy and execute them at once):
 
-```console
+```shell
 grep -qxF "./node_modules/.bin/image-guard --staged" .husky/pre-commit || printf '\n./node_modules/.bin/image-guard --staged' >> .husky/pre-commit;\
 git add .husky/pre-commit;\
 git commit -m "feat: add Husky pre-commit hook for Image Guard";\
@@ -90,7 +90,7 @@ npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --st
 
 If you don’t yet but want to use Husky, run the following commands from your project root:
 
-```console
+```shell
 npm i -D husky;\
 npx husky init;\
 echo "./node_modules/.bin/image-guard --staged" > .husky/pre-commit;\
