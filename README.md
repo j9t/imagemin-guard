@@ -107,7 +107,7 @@ npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --st
 
 * `--dry` allows you to run Image Guard in “dry mode.” All changes are shown in the terminal.
 
-* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case‑insensitive and honors `.gitignore`.
+* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`.
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) in `git diff` and only processes those files—that approach makes Image Guard more efficient in operation.
 
@@ -115,7 +115,7 @@ npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --st
 
   - `--keep-heic` (used with `--heic-to-avif`) preserves the original HEIC/HEIF files instead of deleting them after conversion.
 
-* `--quiet` suppresses per‑file logs and prints only the final summary (plus errors). This reduces console noise and speeds up runs in CI and Git hooks.
+* `--quiet` suppresses per-file logs and prints only the final summary (plus errors). This reduces console noise and speeds up runs in CI and Git hooks.
 
 ## What Does the Output Look Like?
 
@@ -128,7 +128,7 @@ Roughly like this:
 * White (light gray): The image file has not been changed.
 * Blue: The image file had already been compressed more effectively than the new result, and was therefore skipped, too.
 
-Tip: Use `--quiet` to suppress these per‑file lines and keep only the final summary.
+Tip: Use `--quiet` to suppress these per-file lines and keep only the final summary.
 
 ## How Does Image Guard Work?
 
