@@ -6,7 +6,7 @@
     "imagemin-merlin": "bin/image-guard.sh"
   },
   "dependencies": {
-    "globby": "^16.1.0",
+    "globby": "^16.2.1",
     "heic-decode": "^2.1.0",
     "sharp": "^0.35.2",
     "simple-git": "^3.36.0"
