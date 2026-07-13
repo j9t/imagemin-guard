@@ -1,8 +1,0 @@
-.claude/
-.github/
-bin/image-guard.test.js
-media/test/
-.editorconfig
-.gitignore
-.nvmrc
-eslint.config.js
