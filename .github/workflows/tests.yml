@@ -34,15 +34,15 @@ jobs:
           cache: npm
       - name: "Install dependencies"
         run: npm ci
+      - name: "Lint"
+        run: npm run lint
       - name: "Run tests"
         run: npm test
 
+  # sharp and heic-decode ship native binaries
   test-macos:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        node: ["lts/*", "current"]
-    name: "Node ${{ matrix.node }} (macOS)"
+    name: "Node lts/* (macOS)"
     runs-on: macos-latest
     steps:
       - name: "Check out repository"
@@ -52,7 +52,7 @@ jobs:
       - name: "Set up Node.js"
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: lts/*
           cache: npm
       - name: "Install dependencies"
         run: npm ci

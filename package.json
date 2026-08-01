@@ -50,6 +50,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test bin/image-guard.test.js"
   },
   "type": "module",
