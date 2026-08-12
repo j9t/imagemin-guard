@@ -26,11 +26,12 @@ export async function runImageGuard() {
   const options = {
     'heic-to-avif': { type: 'boolean', default: false },
     'keep-heic': { type: 'boolean', default: false },
-    ignore: { type: 'string', multiple: false, default: '' },
-    quiet: { type: 'boolean', default: false },
-    dry: { type: 'boolean', default: false },
+    ignore: { type: 'string', short: 'i', multiple: false, default: '' },
+    quiet: { type: 'boolean', short: 'q', default: false },
+    dry: { type: 'boolean', short: 'd', default: false },
     staged: { type: 'boolean', default: false },
-    help: { type: 'boolean', short: 'h', default: false }
+    help: { type: 'boolean', short: 'h', default: false },
+    version: { type: 'boolean', short: 'V', default: false }
   }
 
   let argv, positionals
@@ -53,11 +54,18 @@ Arguments:
 Options:
       --heic-to-avif    Also convert HEIC/HEIF files to AVIF
       --keep-heic       Keep the original HEIC/HEIF files (only with \`--heic-to-avif\`)
-      --ignore <paths>  Comma-separated paths or glob patterns to exclude
-      --quiet           Print only the final summary
-      --dry             Show what would change without writing any files
+  -i, --ignore <paths>  Comma-separated paths or glob patterns to exclude
+  -q, --quiet           Print only the final summary
+  -d, --dry             Show what would change without writing any files
       --staged          Process only images staged in Git (not combinable with a directory)
-  -h, --help            Show this help`)
+  -h, --help            Show this help
+  -V, --version         Show the version number`)
+    return
+  }
+
+  if (argv.version) {
+    const pkg = JSON.parse(fsSync.readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    console.log(pkg.version)
     return
   }
 

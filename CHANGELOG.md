@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 * Added `--help`/`-h` flag listing arguments and options
+* Added `--version`/`-V` flag printing the version number
+* Added important additional short forms: `-i` (`--ignore`), `-q` (`--quiet`), `-d` (`--dry`)
 
 ## [5.3.1] - 2026-08-12
 
