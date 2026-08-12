@@ -550,4 +550,60 @@ describe('Image Guard', () => {
 
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
+
+  test('Compress images in a directory given as an argument', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-path-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // Run from somewhere else entirely, so only the argument can select the files
+    execSync(`node "${imageGuardScript}" "${tempTestFolder}"`, { cwd: os.tmpdir(), stdio: 'pipe' })
+
+    const { allCompressed, uncompressedFiles } = areImagesCompressed(tempTestFolder, testFolder)
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    if (uncompressedFiles.length > 0) {
+      console.log('The following files were not compressed:', uncompressedFiles.join(', '))
+    }
+    assert.strictEqual(allCompressed, true)
+  })
+
+  test('Resolve `--ignore` relative to the directory argument', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-path-ignore-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const target = fs.readdirSync(tempTestFolder).find(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
+    const sizeBefore = fs.statSync(path.join(tempTestFolder, target)).size
+
+    execSync(`node "${imageGuardScript}" --ignore=${target} "${tempTestFolder}"`, { cwd: os.tmpdir(), stdio: 'pipe' })
+
+    const sizeAfter = fs.statSync(path.join(tempTestFolder, target)).size
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    assert.strictEqual(sizeAfter, sizeBefore, `${target} should be untouched`)
+  })
+
+  test('Fail on a directory that does not exist', () => {
+    assert.throws(
+      () => execSync(`node "${imageGuardScript}" ./no-such-directory`, { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /No such directory/
+    )
+  })
+
+  test('Reject a path combined with `--staged`', () => {
+    assert.throws(
+      () => execSync(`node "${imageGuardScript}" --staged .`, { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /takes its files from Git/
+    )
+  })
+
+  test('Reject more than one path', () => {
+    assert.throws(
+      () => execSync(`node "${imageGuardScript}" . ..`, { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /Expected at most one path/
+    )
+  })
 })

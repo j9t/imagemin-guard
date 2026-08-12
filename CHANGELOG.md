@@ -4,6 +4,17 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-08-12
+
+### Added
+
+* Accepted an optional path to the directory to process (e.g., `image-guard assets`), which previously errored out
+
+### Changed
+
+* Resolved `--ignore` patterns and `.gitignore` lookup relative to the directory being processed
+* Rejected `--staged` combined with a path, whose file set comes from Git rather than from a directory walk
+
 ## [5.2.6] - 2026-07-24
 
 ### Changed

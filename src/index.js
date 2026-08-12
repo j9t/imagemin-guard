@@ -3,6 +3,7 @@
 import { globby, convertPathToPattern } from 'globby'
 import simpleGit from 'simple-git'
 import { parseArgs, styleText } from 'node:util'
+import fsSync from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import sharp from 'sharp'
@@ -23,7 +24,21 @@ export async function runImageGuard() {
     staged: { type: 'boolean', default: false },
     quiet: { type: 'boolean', default: false }
   }
-  const { values: argv } = parseArgs({ options })
+  const { values: argv, positionals } = parseArgs({ options, allowPositionals: true })
+
+  if (positionals.length > 1) {
+    throw new Error(`Expected at most one path, got ${positionals.length}: ${positionals.join(', ')}`)
+  }
+
+  const dir = positionals[0] || '.'
+
+  if (positionals.length && argv.staged) {
+    throw new Error('`--staged` takes its files from Git, not from a path—pass one or the other.')
+  }
+
+  if (!fsSync.existsSync(dir)) {
+    throw new Error(`No such directory: ${dir}`)
+  }
 
   // Share status
   const summary = (run, includesConversion = false) => {
@@ -42,7 +57,8 @@ export async function runImageGuard() {
 
   const allTypes = argv['heic-to-avif'] ? [...fileTypes, ...convertTypes] : fileTypes
   if (!argv.quiet) {
-    console.log(`(Search pattern: ${allTypes.join(', ')})\n`)
+    const where = dir === '.' ? '' : `, in ${dir}`
+    console.log(`(Search pattern: ${allTypes.join(', ')}${where})\n`)
   }
 
   let savedKB = 0
@@ -152,13 +168,18 @@ export async function runImageGuard() {
     return patterns
   }
 
+  // Globbing runs with `dir` as its base—so ignore patterns and `.gitignore`
+  // lookup are relative to the searched directory, not to the shell’s—and the
+  // results are rejoined for display and file access
   const findFiles = async (patterns, options = {}) => {
-    return globby(patterns, {
+    const files = await globby(patterns, {
+      cwd: dir,
       gitignore: true,
       onlyFiles: true,
       caseSensitiveMatch: false,
       ...options
     })
+    return files.map(file => path.join(dir, file))
   }
 
   const filterStagedFiles = async (stagedFiles, types) => {

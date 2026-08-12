@@ -105,11 +105,13 @@ npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --st
 
 ### Parameters
 
+Image Guard takes an optional path to the directory to process—`npx image-guard assets`—and works on the current directory when that path is omitted.
+
 * `--dry` allows you to run Image Guard in “dry mode.” All changes are shown in the terminal.
 
-* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`.
+* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`. Patterns are relative to the directory being processed.
 
-* `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) in `git diff` and only processes those files—that approach makes Image Guard more efficient in operation.
+* `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) in `git diff` and only processes those files—that approach makes Image Guard more efficient in operation. Because the file set comes from Git, `--staged` can’t be combined with a path.
 
 * `--heic-to-avif` converts HEIC/HEIF files to AVIF. Because HEIC sources are already lossy-compressed (HEVC), the conversion uses lossy AVIF encoding (quality 80) to produce files smaller than the originals at near-identical visual quality. Original HEIC/HEIF files are deleted after conversion by default. (Note: The conversion maps Display P3 colors—common on iPhones—to sRGB, which may result in slightly less vivid colors.)
 
