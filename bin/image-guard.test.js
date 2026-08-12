@@ -657,7 +657,7 @@ describe('Image Guard', () => {
   test('Fail on a file given instead of a directory', () => {
     assert.throws(
       () => execFileSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), stdio: 'pipe' }),
-      /No such directory/
+      /Not a directory/
     )
   })
 
