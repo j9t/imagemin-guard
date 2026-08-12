@@ -113,11 +113,11 @@ Image Guard takes an optional path to the directory to process—`npx image-guar
 
   - `--keep-heic` (used with `--heic-to-avif`) preserves the original HEIC/HEIF files instead of deleting them after conversion.
 
-* `--ignore`/`-i` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. Naming a directory excludes everything inside it. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`. Patterns are relative to the directory being processed—with `--staged`, to the repository root.
+* `--ignore`/`-i` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. Naming a directory excludes everything inside it. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors .gitignore. Patterns are relative to the directory being processed—with `--staged`, to the repository root.
 
 * `--quiet`/`-q` suppresses per-file logs and prints only the final summary (plus errors). This reduces console noise and speeds up runs in CI and Git hooks.
 
-* `--dry`/`-d` allows you to run Image Guard in “dry mode.” All changes are shown in the terminal.
+* `--dry`/`-d` allows you to run Image Guard in “dry mode.” All changes are shown in the terminal (unless combined with `--quiet`, which leaves just the summary).
 
 * `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) from staged changes (`git diff --cached`) and only processes those files—that approach makes Image Guard more efficient in operation. Because the file set comes from Git, `--staged` can’t be combined with a path.
 
