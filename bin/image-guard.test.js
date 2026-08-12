@@ -674,4 +674,23 @@ describe('Image Guard', () => {
       /Expected at most one path/
     )
   })
+
+  test('Show help with `--help`', () => {
+    const output = execFileSync(process.execPath, [imageGuardScript, '--help'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.match(output, /Usage: image-guard \[options\] \[directory\]/)
+    assert.match(output, /--heic-to-avif/)
+    assert.match(output, /--staged/)
+  })
+
+  test('Show help with `-h`', () => {
+    const output = execFileSync(process.execPath, [imageGuardScript, '-h'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.match(output, /Usage: image-guard/)
+  })
+
+  test('Point at `--help` for an unknown option', () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [imageGuardScript, '--bogus'], { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /Unknown option .+image-guard --help/
+    )
+  })
 })

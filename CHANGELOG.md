@@ -4,6 +4,17 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0] - 2026-08-13
+
+### Fixed
+
+* Ensured an unknown option points at `--help` instead of passing on the `parseArgs` note about `--`
+* Ensured a path or option error prints on its own, reserving the “Error running Image Guard” prefix (now with the full error) for what isn’t the user’s to fix
+
+### Added
+
+* Added `--help`/`-h` flag listing arguments and options
+
 ## [5.3.1] - 2026-08-12
 
 ### Fixed

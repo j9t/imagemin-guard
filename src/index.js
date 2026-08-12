@@ -15,34 +15,69 @@ export const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp'];
 // Files to be converted (require explicit opt-in)
 export const convertTypes = ['heic', 'heif'];
 
+// Marks a failure as the user’s to fix rather than a bug
+function setupError(message) {
+  const err = new Error(message)
+  err.setupFailed = true
+  return err
+}
+
 export async function runImageGuard() {
   const options = {
-    dry: { type: 'boolean', default: false },
     'heic-to-avif': { type: 'boolean', default: false },
-    ignore: { type: 'string', multiple: false, default: '' },
     'keep-heic': { type: 'boolean', default: false },
+    ignore: { type: 'string', multiple: false, default: '' },
+    quiet: { type: 'boolean', default: false },
+    dry: { type: 'boolean', default: false },
     staged: { type: 'boolean', default: false },
-    quiet: { type: 'boolean', default: false }
+    help: { type: 'boolean', short: 'h', default: false }
   }
-  const { values: argv, positionals } = parseArgs({ options, allowPositionals: true })
+
+  let argv, positionals
+  try {
+    ({ values: argv, positionals } = parseArgs({ options, allowPositionals: true }))
+  } catch (err) {
+    // `parseArgs` appends guidance about `--` that only muddies a plain typo
+    const [summary] = err.message.split('. ')
+    throw setupError(`${summary}—run \`image-guard --help\` for the available options.`)
+  }
+
+  if (argv.help) {
+    console.log(`Usage: image-guard [options] [directory]
+
+Compress images in place, and optionally convert HEIC/HEIF files to AVIF.
+
+Arguments:
+  directory  Directory to process (default: current directory)
+
+Options:
+      --heic-to-avif    Also convert HEIC/HEIF files to AVIF
+      --keep-heic       Keep the original HEIC/HEIF files (only with \`--heic-to-avif\`)
+      --ignore <paths>  Comma-separated paths or glob patterns to exclude
+      --quiet           Print only the final summary
+      --dry             Show what would change without writing any files
+      --staged          Process only images staged in Git (not combinable with a directory)
+  -h, --help            Show this help`)
+    return
+  }
 
   if (positionals.length > 1) {
-    throw new Error(`Expected at most one path, got ${positionals.length}: ${positionals.join(', ')}`)
+    throw setupError(`Expected at most one path, got ${positionals.length}: ${positionals.join(', ')}`)
   }
 
   const dir = positionals[0] || '.'
 
   if (positionals.length && argv.staged) {
-    throw new Error('`--staged` takes its files from Git, not from a path—pass one or the other.')
+    throw setupError('`--staged` takes its files from Git, not from a path—pass one or the other.')
   }
 
   if (!fsSync.existsSync(dir)) {
-    throw new Error(`No such directory: ${dir}`)
+    throw setupError(`No such directory: ${dir}`)
   }
 
   // A path that is there but isn’t a directory gets its own message
   if (!fsSync.statSync(dir).isDirectory()) {
-    throw new Error(`Not a directory: ${dir}`)
+    throw setupError(`Not a directory: ${dir}`)
   }
 
   // Share status
