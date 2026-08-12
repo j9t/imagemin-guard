@@ -36,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-* Resolved `--ignore` patterns and `.gitignore` lookup relative to the directory being processed
+* Resolved `--ignore` patterns and .gitignore lookup relative to the directory being processed
 * Rejected `--staged` combined with a path, whose file set comes from Git rather than from a directory walk
 
 ## [5.2.6] - 2026-07-24

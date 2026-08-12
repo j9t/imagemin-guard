@@ -219,7 +219,7 @@ Options:
     return patterns
   }
 
-  // Globbing runs with `dir` as its base—so ignore patterns and `.gitignore`
+  // Globbing runs with `dir` as its base—so ignore patterns and .gitignore
   // lookup are relative to the searched directory, not to the shell’s—and the
   // results are rejoined for display and file access
   const findFiles = async (patterns, options = {}) => {

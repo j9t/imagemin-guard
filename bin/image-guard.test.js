@@ -593,7 +593,7 @@ describe('Image Guard', () => {
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
-    // A `.gitignore` inside the selected directory must be honored, too
+    // A .gitignore inside the selected directory must be honored, too
     const nestedDir = path.join(tempTestFolder, 'nested')
     fs.mkdirSync(nestedDir, { recursive: true })
     fs.copyFileSync(path.join(testFolder, 'test.png'), path.join(nestedDir, 'test.png'))
