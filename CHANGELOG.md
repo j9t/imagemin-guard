@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [5.3.0] - 2026-08-12
 
+### Fixed
+
+* Fixed `--ignore` so that a directory pattern (as in `--ignore=assets`) excludes the images inside that directory, which previously still got compressed with `--staged` and, without it, on case-sensitive file systems; single-file patterns were unaffected
+
 ### Added
 
 * Accepted an optional path to the directory to process (e.g., `image-guard assets`), which previously errored out

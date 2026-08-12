@@ -145,12 +145,15 @@ export async function runImageGuard() {
     return hadFailures
   }
 
+  // Plain patterns also get a “/**” variant so directories are excluded with
+  // their contents: “dir/” resolves only where globby can stat it, and a bare
+  // “dir” only covers what the walk descends into
   const getIgnorePatterns = (ignore) => {
     return (ignore || '')
       .split(',')
-      .map(s => s.trim())
+      .map(s => s.trim().replace(/^!/, '').replace(/\/+$/, ''))
       .filter(Boolean)
-      .map(p => (p.startsWith('!') ? p : `!${p}`))
+      .flatMap(p => (/[*?[\]{}]/.test(p) ? [`!${p}`] : [`!${p}`, `!${p}/**`]))
   }
 
   const getFilePattern = (ignore, types = fileTypes) => {

@@ -301,6 +301,38 @@ describe('Image Guard', () => {
     fs.rmSync(tempDir, { recursive: true, force: true })
   })
 
+  test('Ignore a directory with `--staged`', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-staged-dir-'))
+    const subDir = path.join(tempDir, 'Assets')
+    fs.mkdirSync(subDir, { recursive: true })
+
+    const [ignored, processed] = fs.readdirSync(testFolder).sort().filter(isIgnoreCandidate)
+    assert.ok(processed, 'Fixtures must provide one image to ignore and one to process')
+    fs.copyFileSync(path.join(testFolder, ignored), path.join(subDir, ignored))
+    fs.copyFileSync(path.join(testFolder, processed), path.join(tempDir, processed))
+
+    const git = simpleGit(tempDir)
+    await git.init()
+    await git.addConfig('user.name', 'Test User')
+    await git.addConfig('user.email', 'test@example.com')
+    await git.add('.')
+
+    const insideBefore = fs.statSync(path.join(subDir, ignored))
+    const outsideBefore = fs.statSync(path.join(tempDir, processed))
+
+    // Trailing slash and mismatched case both have to be handled, and `--staged` never expands directories
+    execFileSync(process.execPath, [imageGuardScript, '--staged', '--ignore=assets/'], { cwd: tempDir, stdio: 'pipe' })
+
+    const insideAfter = fs.statSync(path.join(subDir, ignored))
+    const outsideAfter = fs.statSync(path.join(tempDir, processed))
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    assert.strictEqual(insideAfter.size, insideBefore.size, `${ignored} should be untouched inside the ignored directory`)
+    assert.strictEqual(insideAfter.mtime.getTime(), insideBefore.mtime.getTime())
+    assert.ok(outsideAfter.size < outsideBefore.size, 'File outside the ignored directory should be compressed')
+  })
+
   test('Ensure quiet mode suppresses per-file logs but keeps summary', () => {
     // Prepare isolated temp directory with test images
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-quiet-'))
