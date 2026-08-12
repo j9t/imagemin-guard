@@ -101,15 +101,19 @@ npm pkg set scripts.postprepare="grep -qxF './node_modules/.bin/image-guard --st
 
 (The `postprepare` script ensures that the hook is added to the repository whenever someone installs the package.)
 
+If you give the hook options like `--ignore`, add them to the `postprepare` script as well—the hook command is the only place to configure Image Guard, and the next install rewrites that line.
+
 **Important:** When you commit images that have not yet been compressed, the automated compression process (triggered by the pre-commit hook) will modify those image files to reduce their size. As a result, after your initial commit attempt, you will see these images appear as changed files in Git. To include the optimized images in your repository, you need to stage and commit them again. In rare cases, if further compression is possible, you may need to repeat this process until no further changes are detected. This workflow is intentional and ensures that only optimally compressed images are committed. Many editors can display diffs for images, helping you review these changes.
 
 ### Parameters
 
+Image Guard takes an optional path to the directory to process—`npx image-guard assets`—and works on the current directory when that path is omitted.
+
 * `--dry` allows you to run Image Guard in “dry mode.” All changes are shown in the terminal.
 
-* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`.
+* `--ignore` allows you to specify paths to be ignored (as in `--ignore=example,test`). Multiple paths must be separated by commas. Naming a directory excludes everything inside it. The option supports glob patterns (e.g., `assets/**`, `**/*.png`); matching is case-insensitive and honors `.gitignore`. Patterns are relative to the directory being processed—with `--staged`, to the repository root.
 
-* `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) in `git diff` and only processes those files—that approach makes Image Guard more efficient in operation.
+* `--staged` (recommended with automated use) triggers a mode that watches PNG, JPG, GIF, WebP, and AVIF files (and HEIC/HEIF, when `--heic-to-avif` is used) from staged changes (`git diff --cached`) and only processes those files—that approach makes Image Guard more efficient in operation. Because the file set comes from Git, `--staged` can’t be combined with a path.
 
 * `--heic-to-avif` converts HEIC/HEIF files to AVIF. Because HEIC sources are already lossy-compressed (HEVC), the conversion uses lossy AVIF encoding (quality 80) to produce files smaller than the originals at near-identical visual quality. Original HEIC/HEIF files are deleted after conversion by default. (Note: The conversion maps Display P3 colors—common on iPhones—to sRGB, which may result in slightly less vivid colors.)
 

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { execSync } from 'child_process'
+import { execFileSync, spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert'
@@ -28,6 +28,12 @@ function copyFiles(srcDir, destDir) {
 
 // Function to check if images are compressed
 const ignoreFiles = ['test#corrupt.gif']
+
+// Supported image that the tool actually rewrites, making it a meaningful `--ignore` target
+function isIgnoreCandidate(file) {
+  if (ignoreFiles.includes(file)) return false
+  return allowedFileTypes.includes(path.extname(file).slice(1).toLowerCase())
+}
 
 function areImagesCompressed(dir, originalDir = testFolder) {
   const uncompressedFiles = []
@@ -97,7 +103,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}"`)
+      execFileSync(process.execPath, [imageGuardScript])
     } finally {
       process.chdir(originalCwd)
     }
@@ -131,7 +137,7 @@ describe('Image Guard', () => {
     await git.add('.')
 
     // Run image-guard script with “--staged” option
-    execSync(`node "${imageGuardScript}" --staged`, { cwd: testFolderGit })
+    execFileSync(process.execPath, [imageGuardScript, '--staged'], { cwd: testFolderGit })
 
     // Verify images are compressed
     const { allCompressed, uncompressedFiles } = areImagesCompressed(testFolderGit)
@@ -146,7 +152,7 @@ describe('Image Guard', () => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
     })
-    execSync(`node "${imageGuardScript}" --dry`, { cwd: testFolderGit, stdio: 'pipe' })
+    execFileSync(process.execPath, [imageGuardScript, '--dry'], { cwd: testFolderGit, stdio: 'pipe' })
     const newStats = fs.readdirSync(testFolderGit).sort().map(file => {
       const filePath = path.join(testFolderGit, file)
       return { file, stats: fs.statSync(filePath) }
@@ -166,11 +172,8 @@ describe('Image Guard', () => {
     copyFiles(testFolder, tempTestFolder)
 
     // Pick a known file from fixture folder
-    const entries = fs.readdirSync(tempTestFolder).filter(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
-    if (entries.length === 0) {
-      fs.rmSync(tempDir, { recursive: true, force: true })
-      return
-    }
+    const entries = fs.readdirSync(tempTestFolder).sort().filter(isIgnoreCandidate)
+    assert.ok(entries.length >= 2, 'Fixtures must provide one image to ignore and one to process')
     const target = entries[0]
     const tempPath = path.join(tempTestFolder, target)
     // Snapshot the temp copy before running the CLI to ensure equality checks reflect true non-mutation
@@ -187,11 +190,15 @@ describe('Image Guard', () => {
       preSnapshot.set(name, fs.statSync(p))
     })
 
+    // Patterns are relative to the base of each run: The non-staged run walks “tempDir”, the staged run takes its files from the repository in “tempTestFolder”
+    const ignoreNonStaged = path.posix.join('test', target)
+    const ignoreStaged = target
+
     // Non-staged: Run with `--ignore=<file>`
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}" --ignore=${path.posix.join('test', target)}`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript, `--ignore=${ignoreNonStaged}`], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -217,11 +224,15 @@ describe('Image Guard', () => {
     await git.add('.')
 
     // Run staged with `ignore`
-    execSync(`node "${imageGuardScript}" --staged --ignore=${path.posix.join('test', target)}`, { cwd: tempTestFolder, stdio: 'pipe' })
+    const stagedOutput = execFileSync(process.execPath, [imageGuardScript, '--staged', `--ignore=${ignoreStaged}`], { cwd: tempTestFolder, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+
+    // The staged run must have had files to work on, or the ignore check below proves nothing
+    assert.doesNotMatch(stagedOutput, /There were no images to compress\./)
 
     // Check file still not modified compared to its current state (size should not shrink due to ignore)
     const afterStats = fs.statSync(tempPath)
     assert.strictEqual(afterStats.size, tempStats.size)
+    assert.strictEqual(afterStats.mtime.getTime(), tempStats.mtime.getTime())
 
     // Cleanup
     fs.rmSync(tempDir, { recursive: true, force: true })
@@ -236,28 +247,24 @@ describe('Image Guard', () => {
     const subDir = path.join(tempTestFolder, 'Assets')
     fs.mkdirSync(subDir, { recursive: true })
     // Copy one file into subdir
-    const oneFile = fs.readdirSync(tempTestFolder).find(n => /\.(png|jpe?g|gif|webp|avif)$/i.test(n))
-    if (oneFile) fs.copyFileSync(path.join(tempTestFolder, oneFile), path.join(subDir, oneFile))
+    const oneFile = fs.readdirSync(tempTestFolder).sort().find(isIgnoreCandidate)
+    assert.ok(oneFile, 'Fixtures must provide an image to ignore')
+    fs.copyFileSync(path.join(tempTestFolder, oneFile), path.join(subDir, oneFile))
 
-    // Build ignore list: specific file (if available) and directory (case-insensitive path)
-    const ignoreArg = oneFile ? `--ignore=test/${oneFile},test/assets/` : `--ignore=test/assets/`
+    // Build ignore list: specific file and directory (case-insensitive path)
+    const ignoreArg = `--ignore=test/${oneFile},test/assets/`
+
     // Snapshot the file placed in ignored directory, before running the CLI
-    let preInside
-    if (oneFile) {
-      preInside = fs.statSync(path.join(subDir, oneFile))
-    }
+    const preInside = fs.statSync(path.join(subDir, oneFile))
 
     // Snapshot before running CLI for file-level ignore check
-    let preIgnored
-    if (oneFile) {
-      preIgnored = fs.statSync(path.join(tempTestFolder, oneFile))
-    }
+    const preIgnored = fs.statSync(path.join(tempTestFolder, oneFile))
 
     // Build a pre-run snapshot of candidates that are not ignored
     const preSnapshot = new Map()
     fs.readdirSync(tempTestFolder).sort().forEach(name => {
-      // Exclude the explicitly ignored file (if any) and anything inside the ignored directory
-      if (oneFile && name === oneFile) return
+      // Exclude the explicitly ignored file and anything inside the ignored directory
+      if (name === oneFile) return
       if (ignoreFiles.includes(name)) return // exclude corrupt fixture
       const ext = path.extname(name).slice(1).toLowerCase()
       if (!allowedFileTypes.includes(ext)) return
@@ -268,17 +275,15 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}" ${ignoreArg}`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript, ignoreArg], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
 
-    // Assert ignored file unchanged (only if there was a file to ignore explicitly)
-    if (oneFile) {
-      const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
-      assert.strictEqual(ignoredCopy.size, preIgnored.size)
-      assert.strictEqual(ignoredCopy.mtime.getTime(), preIgnored.mtime.getTime())
-    }
+    // Assert ignored file unchanged
+    const ignoredCopy = fs.statSync(path.join(tempTestFolder, oneFile))
+    assert.strictEqual(ignoredCopy.size, preIgnored.size)
+    assert.strictEqual(ignoredCopy.mtime.getTime(), preIgnored.mtime.getTime())
 
     // Assert that at least one non-ignored file in the root `tempTestFolder` was compressed
     let shrunkCount = 0
@@ -288,14 +293,44 @@ describe('Image Guard', () => {
     }
     assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
 
-    // Assert file inside ignored directory unchanged (if created)
-    if (oneFile) {
-      const inside = fs.statSync(path.join(subDir, oneFile))
-      // Since original may change, assert that the file inside ignored directory remained unchanged, by comparing to its own pre-run snapshot
-      assert.strictEqual(inside.size, preInside.size)
-    }
+    // Assert file inside ignored directory unchanged, by comparing to its own pre-run snapshot—the original may change
+    const inside = fs.statSync(path.join(subDir, oneFile))
+    assert.strictEqual(inside.size, preInside.size)
+    assert.strictEqual(inside.mtime.getTime(), preInside.mtime.getTime())
 
     fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('Ignore a directory with `--staged`', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-staged-dir-'))
+    const subDir = path.join(tempDir, 'Assets')
+    fs.mkdirSync(subDir, { recursive: true })
+
+    const [ignored, processed] = fs.readdirSync(testFolder).sort().filter(isIgnoreCandidate)
+    assert.ok(processed, 'Fixtures must provide one image to ignore and one to process')
+    fs.copyFileSync(path.join(testFolder, ignored), path.join(subDir, ignored))
+    fs.copyFileSync(path.join(testFolder, processed), path.join(tempDir, processed))
+
+    const git = simpleGit(tempDir)
+    await git.init()
+    await git.addConfig('user.name', 'Test User')
+    await git.addConfig('user.email', 'test@example.com')
+    await git.add('.')
+
+    const insideBefore = fs.statSync(path.join(subDir, ignored))
+    const outsideBefore = fs.statSync(path.join(tempDir, processed))
+
+    // Trailing slash and mismatched case both have to be handled, and `--staged` never expands directories
+    execFileSync(process.execPath, [imageGuardScript, '--staged', '--ignore=assets/'], { cwd: tempDir, stdio: 'pipe' })
+
+    const insideAfter = fs.statSync(path.join(subDir, ignored))
+    const outsideAfter = fs.statSync(path.join(tempDir, processed))
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    assert.strictEqual(insideAfter.size, insideBefore.size, `${ignored} should be untouched inside the ignored directory`)
+    assert.strictEqual(insideAfter.mtime.getTime(), insideBefore.mtime.getTime())
+    assert.ok(outsideAfter.size < outsideBefore.size, 'File outside the ignored directory should be compressed')
   })
 
   test('Ensure quiet mode suppresses per-file logs but keeps summary', () => {
@@ -308,7 +343,7 @@ describe('Image Guard', () => {
     let stdout
     try {
       process.chdir(tempDir)
-      stdout = execSync(`node "${imageGuardScript}" --quiet`, { encoding: 'utf8' })
+      stdout = execFileSync(process.execPath, [imageGuardScript, '--quiet'], { encoding: 'utf8' })
     } finally {
       process.chdir(originalCwd)
       fs.rmSync(tempDir, { recursive: true, force: true })
@@ -336,7 +371,7 @@ describe('Image Guard', () => {
     let stdout
     try {
       process.chdir(tempDir)
-      stdout = execSync(`node "${imageGuardScript}" --dry --quiet`, { encoding: 'utf8' })
+      stdout = execFileSync(process.execPath, [imageGuardScript, '--dry', '--quiet'], { encoding: 'utf8' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -377,7 +412,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}"`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -408,7 +443,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}" --heic-to-avif`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript, '--heic-to-avif'], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -439,7 +474,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}" --heic-to-avif --keep-heic`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript, '--heic-to-avif', '--keep-heic'], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -470,7 +505,7 @@ describe('Image Guard', () => {
     let output
     try {
       process.chdir(tempDir)
-      output = execSync(`node "${imageGuardScript}" --heic-to-avif --dry`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+      output = execFileSync(process.execPath, [imageGuardScript, '--heic-to-avif', '--dry'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     } finally {
       process.chdir(originalCwd)
     }
@@ -501,7 +536,7 @@ describe('Image Guard', () => {
     const originalCwd = process.cwd()
     try {
       process.chdir(tempDir)
-      execSync(`node "${imageGuardScript}"`, { stdio: 'pipe' })
+      execFileSync(process.execPath, [imageGuardScript], { stdio: 'pipe' })
     } finally {
       process.chdir(originalCwd)
     }
@@ -523,7 +558,7 @@ describe('Image Guard', () => {
     let output
     try {
       process.chdir(tempDir)
-      output = execSync(`node "${imageGuardScript}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+      output = execFileSync(process.execPath, [imageGuardScript], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
     } finally {
       process.chdir(originalCwd)
       fs.rmSync(tempDir, { recursive: true, force: true })
@@ -541,7 +576,9 @@ describe('Image Guard', () => {
     let output
     try {
       process.chdir(tempDir)
-      output = execSync(`node "${imageGuardScript}" --keep-heic 2>&1`, { encoding: 'utf8' })
+      // The warning goes to stderr, so both streams are combined here
+      const run = spawnSync(process.execPath, [imageGuardScript, '--keep-heic'], { encoding: 'utf8' })
+      output = `${run.stdout}${run.stderr}`
     } finally {
       process.chdir(originalCwd)
     }
@@ -549,5 +586,92 @@ describe('Image Guard', () => {
     assert.match(output, /`--keep-heic` has no effect without `--heic-to-avif`/)
 
     fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  test('Compress images in a directory given as an argument', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-path-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    // A `.gitignore` inside the selected directory must be honored, too
+    const nestedDir = path.join(tempTestFolder, 'nested')
+    fs.mkdirSync(nestedDir, { recursive: true })
+    fs.copyFileSync(path.join(testFolder, 'test.png'), path.join(nestedDir, 'test.png'))
+    fs.copyFileSync(path.join(testFolder, 'test.jpg'), path.join(nestedDir, 'test.jpg'))
+    fs.writeFileSync(path.join(nestedDir, '.gitignore'), 'test.png\n')
+    const nestedIgnoredBefore = fs.statSync(path.join(nestedDir, 'test.png'))
+    const nestedProcessedBefore = fs.statSync(path.join(nestedDir, 'test.jpg'))
+
+    // Run from somewhere else entirely, so only the argument can select the files
+    execFileSync(process.execPath, [imageGuardScript, tempTestFolder], { cwd: os.tmpdir(), stdio: 'pipe' })
+
+    const { allCompressed, uncompressedFiles } = areImagesCompressed(tempTestFolder, testFolder)
+
+    const nestedIgnoredAfter = fs.statSync(path.join(nestedDir, 'test.png'))
+    const nestedProcessedAfter = fs.statSync(path.join(nestedDir, 'test.jpg'))
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    if (uncompressedFiles.length > 0) {
+      console.log('The following files were not compressed:', uncompressedFiles.join(', '))
+    }
+    assert.strictEqual(allCompressed, true)
+    assert.strictEqual(nestedIgnoredAfter.size, nestedIgnoredBefore.size, 'Gitignored file should be untouched')
+    assert.strictEqual(nestedIgnoredAfter.mtime.getTime(), nestedIgnoredBefore.mtime.getTime())
+    assert.ok(nestedProcessedAfter.size < nestedProcessedBefore.size, 'Non-ignored file in the same directory should be compressed')
+  })
+
+  test('Resolve `--ignore` relative to the directory argument', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-path-ignore-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const [target, ...others] = fs.readdirSync(tempTestFolder).sort().filter(isIgnoreCandidate)
+    const before = fs.statSync(path.join(tempTestFolder, target))
+    const othersBefore = new Map(others.map(name => [name, fs.statSync(path.join(tempTestFolder, name))]))
+
+    execFileSync(process.execPath, [imageGuardScript, `--ignore=${target}`, tempTestFolder], { cwd: os.tmpdir(), stdio: 'pipe' })
+
+    const after = fs.statSync(path.join(tempTestFolder, target))
+
+    // Verify the run was not a no-op: at least one non-ignored image must have been processed
+    let shrunkCount = 0
+    for (const [name, statBefore] of othersBefore) {
+      if (fs.statSync(path.join(tempTestFolder, name)).size < statBefore.size) shrunkCount++
+    }
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    assert.strictEqual(after.size, before.size, `${target} should be untouched`)
+    assert.strictEqual(after.mtime.getTime(), before.mtime.getTime())
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
+  })
+
+  test('Fail on a directory that does not exist', () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [imageGuardScript, './no-such-directory'], { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /No such directory/
+    )
+  })
+
+  test('Fail on a file given instead of a directory', () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /No such directory/
+    )
+  })
+
+  test('Reject a path combined with `--staged`', () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [imageGuardScript, '--staged', '.'], { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /takes its files from Git/
+    )
+  })
+
+  test('Reject more than one path', () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [imageGuardScript, '.', '..'], { cwd: os.tmpdir(), stdio: 'pipe' }),
+      /Expected at most one path/
+    )
   })
 })
