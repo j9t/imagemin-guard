@@ -8,6 +8,11 @@ import decode from 'heic-decode'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
 
+// `styleText` detects color on `process.stdout` by default, so anything bound
+// for STDERR has to name that stream—otherwise a redirected STDERR collects
+// escape codes whenever STDOUT happens to be a terminal
+export const styleStderr = (format, text) => styleText(format, text, { stream: process.stderr })
+
 const logMessage = (message, dry, color = 'yellow', quiet = false) => {
   if (quiet) return
   const prefix = dry ? 'Dry run: ' : ''
@@ -143,7 +148,7 @@ const compression = async (filename, dry, quiet = false) => {
     }
 
     if (fileSizeAfter === 0) {
-      console.error(styleText('red', `Error compressing ${filename}: Compressed file size is 0`))
+      console.error(styleStderr('red', `Error compressing ${filename}: Compressed file size is 0`))
     }
 
     return fileSizeAfter < fileSizeBefore ? fileSizeBefore - fileSizeAfter : 0
@@ -163,7 +168,7 @@ const compression = async (filename, dry, quiet = false) => {
     ) {
       logMessage(`Skipped ${filename} (corrupt file)`, dry, 'yellow', quiet)
     } else {
-      console.error(styleText('red', `Error compressing ${filename}:`), err)
+      console.error(styleStderr('red', `Error compressing ${filename}:`), err)
     }
     return 0
 
@@ -184,14 +189,14 @@ const compression = async (filename, dry, quiet = false) => {
         await retryFileOperation(() => fs.unlink(filenameBackup))
       } catch (err) {
         if (err.code !== 'ENOENT') {
-          console.warn(styleText('yellow', `Failed to delete backup file ${filenameBackup}:`), err)
+          console.warn(styleStderr('yellow', `Failed to delete backup file ${filenameBackup}:`), err)
         }
       }
     } else if (!dry && !replacementSucceeded) {
       // If a backup was created but replacement failed, warn so the user can recover it
       try {
         await fs.access(filenameBackup)
-        console.warn(styleText('yellow', `Replacement failed for ${filename}; backup preserved at ${filenameBackup}`))
+        console.warn(styleStderr('yellow', `Replacement failed for ${filename}; backup preserved at ${filenameBackup}`))
       } catch {
         // No backup exists—nothing to warn about
       }
@@ -262,7 +267,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
       await retryFileOperation(() => fs.unlink(avifPath))
     } catch (cleanupErr) {
       if (cleanupErr.code !== 'ENOENT') {
-        console.warn(styleText('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
+        console.warn(styleStderr('yellow', `Failed to clean up ${avifPath}:`), cleanupErr)
       }
     }
 
@@ -272,7 +277,7 @@ const conversion = async (filename, dry, keepOriginal, quiet = false) => {
     )) {
       logMessage(`Skipped ${filename} (corrupt or unsupported HEIC/HEIF file)`, dry, 'yellow', quiet)
     } else {
-      console.error(styleText('red', `Error converting ${filename}:`), err)
+      console.error(styleStderr('red', `Error converting ${filename}:`), err)
     }
     return 0
   }

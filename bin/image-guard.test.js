@@ -576,7 +576,7 @@ describe('Image Guard', () => {
     let output
     try {
       process.chdir(tempDir)
-      // The warning goes to stderr, so both streams are combined here
+      // The warning goes to STDERR, so both streams are combined here
       const run = spawnSync(process.execPath, [imageGuardScript, '--keep-heic'], { encoding: 'utf8' })
       output = `${run.stdout}${run.stderr}`
     } finally {
@@ -655,10 +655,10 @@ describe('Image Guard', () => {
   })
 
   test('Fail on a file given instead of a directory', () => {
-    assert.throws(
-      () => execFileSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), stdio: 'pipe' }),
-      /Not a directory/
-    )
+    const run = spawnSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.strictEqual(run.status, 1)
+    assert.match(run.stderr, /Not a directory/)
+    assert.doesNotMatch(run.stderr, /Error running Image Guard:/)
   })
 
   test('Reject a path combined with `--staged`', () => {
@@ -688,10 +688,12 @@ describe('Image Guard', () => {
   })
 
   test('Point at `--help` for an unknown option', () => {
-    assert.throws(
-      () => execFileSync(process.execPath, [imageGuardScript, '--bogus'], { cwd: os.tmpdir(), stdio: 'pipe' }),
-      /Unknown option .+image-guard --help/
-    )
+    const run = spawnSync(process.execPath, [imageGuardScript, '--bogus'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.strictEqual(run.status, 1)
+    assert.match(run.stderr, /Unknown option .+image-guard --help/)
+
+    // A setup failure is the user’s to fix, so it prints without the bug-report prefix
+    assert.doesNotMatch(run.stderr, /Error running Image Guard:/)
   })
 
   test('List every short form in the help output', () => {

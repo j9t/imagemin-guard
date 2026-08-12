@@ -7,7 +7,7 @@ import fsSync from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import sharp from 'sharp'
-import { utils } from './utils.js'
+import { styleStderr, utils } from './utils.js'
 
 // Files to be compressed
 export const fileTypes = ['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp'];
@@ -100,7 +100,7 @@ Options:
   }
 
   if (argv['keep-heic'] && !argv['heic-to-avif']) {
-    console.warn(styleText('yellow', '`--keep-heic` has no effect without `--heic-to-avif`'))
+    console.warn(styleStderr('yellow', '`--keep-heic` has no effect without `--heic-to-avif`'))
   }
 
   const allTypes = argv['heic-to-avif'] ? [...fileTypes, ...convertTypes] : fileTypes
@@ -165,7 +165,7 @@ Options:
       } else {
         hadFailures = true
         const reason = r.reason && r.reason.message ? r.reason.message : String(r.reason)
-        console.error(styleText('red', 'Task failed:'), reason)
+        console.error(styleStderr('red', 'Task failed:'), reason)
       }
     }
     return { hadFailures, addedKB }

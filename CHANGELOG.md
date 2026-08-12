@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 * Ensured an unknown option points at `--help` instead of passing on the `parseArgs` note about `--`
 * Ensured a path or option error prints on its own, reserving the “Error running Image Guard” prefix (now with the full error) for what isn’t the user’s to fix
+* Ensured errors and warnings check STDERR—not STDOUT—for color support, so a redirected STDERR no longer collects escape codes
 
 ### Added
 
