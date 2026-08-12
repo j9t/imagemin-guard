@@ -36,7 +36,7 @@ export async function runImageGuard() {
     throw new Error('`--staged` takes its files from Git, not from a path—pass one or the other.')
   }
 
-  if (!fsSync.existsSync(dir)) {
+  if (!fsSync.existsSync(dir) || !fsSync.statSync(dir).isDirectory()) {
     throw new Error(`No such directory: ${dir}`)
   }
 
