@@ -576,7 +576,7 @@ describe('Image Guard', () => {
     let output
     try {
       process.chdir(tempDir)
-      // The warning goes to stderr, so both streams are combined here
+      // The warning goes to STDERR, so both streams are combined here
       const run = spawnSync(process.execPath, [imageGuardScript, '--keep-heic'], { encoding: 'utf8' })
       output = `${run.stdout}${run.stderr}`
     } finally {
@@ -593,7 +593,7 @@ describe('Image Guard', () => {
     const tempTestFolder = path.join(tempDir, 'test')
     copyFiles(testFolder, tempTestFolder)
 
-    // A `.gitignore` inside the selected directory must be honored, too
+    // A .gitignore inside the selected directory must be honored, too
     const nestedDir = path.join(tempTestFolder, 'nested')
     fs.mkdirSync(nestedDir, { recursive: true })
     fs.copyFileSync(path.join(testFolder, 'test.png'), path.join(nestedDir, 'test.png'))
@@ -655,10 +655,10 @@ describe('Image Guard', () => {
   })
 
   test('Fail on a file given instead of a directory', () => {
-    assert.throws(
-      () => execFileSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), stdio: 'pipe' }),
-      /Not a directory/
-    )
+    const run = spawnSync(process.execPath, [imageGuardScript, path.join(testFolder, 'test.png')], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.strictEqual(run.status, 1)
+    assert.match(run.stderr, /Not a directory/)
+    assert.doesNotMatch(run.stderr, /Error running Image Guard:/)
   })
 
   test('Reject a path combined with `--staged`', () => {
@@ -673,5 +673,91 @@ describe('Image Guard', () => {
       () => execFileSync(process.execPath, [imageGuardScript, '.', '..'], { cwd: os.tmpdir(), stdio: 'pipe' }),
       /Expected at most one path/
     )
+  })
+
+  test('Show help with `--help`', () => {
+    const output = execFileSync(process.execPath, [imageGuardScript, '--help'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.match(output, /Usage: image-guard \[options\] \[directory\]/)
+    assert.match(output, /--heic-to-avif/)
+    assert.match(output, /--staged/)
+  })
+
+  test('Show help with `-h`', () => {
+    const output = execFileSync(process.execPath, [imageGuardScript, '-h'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.match(output, /Usage: image-guard/)
+  })
+
+  test('Point at `--help` for an unknown option', () => {
+    const run = spawnSync(process.execPath, [imageGuardScript, '--bogus'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    assert.strictEqual(run.status, 1)
+    assert.match(run.stderr, /Unknown option .+image-guard --help/)
+
+    // A setup failure is the user’s to fix, so it prints without the bug-report prefix
+    assert.doesNotMatch(run.stderr, /Error running Image Guard:/)
+  })
+
+  test('List every short form in the help output', () => {
+    const output = execFileSync(process.execPath, [imageGuardScript, '--help'], { cwd: os.tmpdir(), encoding: 'utf8' })
+    for (const [short, long] of [['-i', '--ignore'], ['-q', '--quiet'], ['-d', '--dry'], ['-h', '--help'], ['-V', '--version']]) {
+      assert.match(output, new RegExp(`${short}, ${long}\\b`), `Help should pair ${short} with ${long}`)
+    }
+  })
+
+  test('Show the version with `--version` and `-V`', () => {
+    const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'))
+    for (const flag of ['--version', '-V']) {
+      const output = execFileSync(process.execPath, [imageGuardScript, flag], { cwd: os.tmpdir(), encoding: 'utf8' })
+      assert.strictEqual(output.trim(), version)
+    }
+  })
+
+  test('Treat `-d` and `-q` like their long forms, including as a group', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-short-flags-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const before = fs.readdirSync(tempTestFolder).sort().map(file => ({ file, stats: fs.statSync(path.join(tempTestFolder, file)) }))
+
+    const output = execFileSync(process.execPath, [imageGuardScript, '-dq', tempTestFolder], { cwd: os.tmpdir(), encoding: 'utf8' })
+
+    const after = fs.readdirSync(tempTestFolder).sort().map(file => ({ file, stats: fs.statSync(path.join(tempTestFolder, file)) }))
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    // `-q`: Summary only, no per-file lines
+    assert.match(output, /There were no images to compress\.|Defensive base compression completed\./)
+    assert.doesNotMatch(output, /Compressed|Skipped/)
+
+    // `-d`: No file touched
+    before.forEach((b, i) => {
+      assert.strictEqual(after[i].file, b.file)
+      assert.strictEqual(after[i].stats.size, b.stats.size)
+      assert.strictEqual(after[i].stats.mtime.getTime(), b.stats.mtime.getTime())
+    })
+  })
+
+  test('Accept `-i` as the short form of `--ignore`', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'image-guard-short-ignore-'))
+    const tempTestFolder = path.join(tempDir, 'test')
+    copyFiles(testFolder, tempTestFolder)
+
+    const [target, ...others] = fs.readdirSync(tempTestFolder).sort().filter(isIgnoreCandidate)
+    const before = fs.statSync(path.join(tempTestFolder, target))
+    const othersBefore = new Map(others.map(name => [name, fs.statSync(path.join(tempTestFolder, name))]))
+
+    execFileSync(process.execPath, [imageGuardScript, '-i', target, tempTestFolder], { cwd: os.tmpdir(), stdio: 'pipe' })
+
+    const after = fs.statSync(path.join(tempTestFolder, target))
+
+    let shrunkCount = 0
+    for (const [name, statBefore] of othersBefore) {
+      if (fs.statSync(path.join(tempTestFolder, name)).size < statBefore.size) shrunkCount++
+    }
+
+    fs.rmSync(tempDir, { recursive: true, force: true })
+
+    assert.strictEqual(after.size, before.size, `${target} should be untouched`)
+    assert.strictEqual(after.mtime.getTime(), before.mtime.getTime())
+    assert.ok(shrunkCount >= 1, 'Expected at least one non-ignored file to be compressed')
   })
 })

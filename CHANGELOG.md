@@ -4,6 +4,20 @@ Starting with version 5.2.0, all notable changes to Image Guard are documented i
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0] - 2026-08-13
+
+### Fixed
+
+* Ensured an unknown option points at `--help` instead of passing on the `parseArgs` note about `--`
+* Ensured a path or option error prints on its own, reserving the “Error running Image Guard” prefix (now with the full error) for what isn’t the user’s to fix
+* Ensured errors and warnings check STDERR—not STDOUT—for color support, so a redirected STDERR no longer collects escape codes
+
+### Added
+
+* Added `--help`/`-h` flag listing arguments and options
+* Added `--version`/`-V` flag printing the version number
+* Added important additional short forms: `-i` (`--ignore`), `-q` (`--quiet`), `-d` (`--dry`)
+
 ## [5.3.1] - 2026-08-12
 
 ### Fixed
@@ -22,7 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-* Resolved `--ignore` patterns and `.gitignore` lookup relative to the directory being processed
+* Resolved `--ignore` patterns and .gitignore lookup relative to the directory being processed
 * Rejected `--staged` combined with a path, whose file set comes from Git rather than from a directory walk
 
 ## [5.2.6] - 2026-07-24
