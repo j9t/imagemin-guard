@@ -162,7 +162,7 @@ That is, micro-optimization still needs to be taken care of through other means,
 
 There are a few ideas, like adding light SVG support, or ensuring compatibility with projects in which the project’s .git folder is not at the same level as its package.json (currently, automatic mode doesn’t work in these cases).
 
-Feedback is appreciated: Please [file an issue](https://github.com/j9t/image-guard/issues/new) or send a pull request. Thank you!
+Feedback is appreciated: Please [file an issue](https://github.com/j9t/image-guard/issues) or send a pull request. Thank you!
 
 ## License
 
